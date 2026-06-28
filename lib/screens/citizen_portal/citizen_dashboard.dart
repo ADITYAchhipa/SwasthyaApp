@@ -1,0 +1,4349 @@
+import 'dart:ui';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../providers/swasthya_tap_provider.dart';
+import '../../utils/translation_service.dart';
+import '../../models/models.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/glass_card.dart';
+import '../../services/api_service.dart';
+import 'edit_medical_profile.dart';
+import 'organ_donation_pledge.dart';
+import 'nearby_health_centers_screen.dart';
+import 'card_viewer_screen.dart';
+import 'scanned_profile_screen.dart';
+import '../onboarding_screen.dart' hide HeartEcgPainter;
+
+class CitizenDashboard extends StatefulWidget {
+  const CitizenDashboard({Key? key}) : super(key: key);
+
+  @override
+  State<CitizenDashboard> createState() => _CitizenDashboardState();
+}
+
+class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerProviderStateMixin {
+  int _currentIndex = 0;
+  bool _flashOn = false;
+  late AnimationController _scannerController;
+  late MobileScannerController _cameraController;
+
+  // Learn tab state variables
+  int _selectedLearnCategoryIndex = 0;
+  int _featuredActiveIndex = 0;
+  bool _isLearnGridView = true;
+  String _selectedLearnLanguage = 'English';
+
+  // Form Key & Controllers for editable Health Profile
+  final _profileFormKey = GlobalKey<FormState>();
+  
+  late TextEditingController _fullNameController;
+  late TextEditingController _ageController;
+  late TextEditingController _addressController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _allergiesController;
+  late TextEditingController _medicationsController;
+  late TextEditingController _chronicConditionsController;
+  late TextEditingController _insuranceCompanyController;
+  late TextEditingController _insurancePolicyNumberController;
+  late TextEditingController _specialInstructionsController;
+  
+  // Emergency Contacts
+  late TextEditingController _contact1NameController;
+  late TextEditingController _contact1RelationController;
+  late TextEditingController _contact1PhoneController;
+  late TextEditingController _contact2NameController;
+  late TextEditingController _contact2RelationController;
+  late TextEditingController _contact2PhoneController;
+
+  String _bloodGroup = 'O+';
+  bool _isDnr = false;
+  bool _isProfileInitialized = false;
+
+  void _initProfileFields(MedicalProfile citizen) {
+    if (_isProfileInitialized) return;
+    
+    _fullNameController = TextEditingController(text: citizen.fullName);
+    _ageController = TextEditingController(text: citizen.age?.toString() ?? '');
+    _addressController = TextEditingController(text: citizen.address);
+    _phoneController = TextEditingController(text: citizen.phoneNumber);
+    _emailController = TextEditingController(text: citizen.email);
+    _allergiesController = TextEditingController(text: citizen.allergies);
+    _medicationsController = TextEditingController(text: citizen.medications);
+    _chronicConditionsController = TextEditingController(text: citizen.chronicConditions);
+    _insuranceCompanyController = TextEditingController(text: citizen.insuranceCompany);
+    _insurancePolicyNumberController = TextEditingController(text: citizen.insurancePolicyNumber);
+    _specialInstructionsController = TextEditingController(text: citizen.specialInstructions);
+    
+    // Contacts
+    if (citizen.emergencyContacts.isNotEmpty) {
+      _contact1NameController = TextEditingController(text: citizen.emergencyContacts[0].name);
+      _contact1RelationController = TextEditingController(text: citizen.emergencyContacts[0].relation);
+      _contact1PhoneController = TextEditingController(text: citizen.emergencyContacts[0].phone);
+    } else {
+      _contact1NameController = TextEditingController();
+      _contact1RelationController = TextEditingController();
+      _contact1PhoneController = TextEditingController();
+    }
+    
+    if (citizen.emergencyContacts.length > 1) {
+      _contact2NameController = TextEditingController(text: citizen.emergencyContacts[1].name);
+      _contact2RelationController = TextEditingController(text: citizen.emergencyContacts[1].relation);
+      _contact2PhoneController = TextEditingController(text: citizen.emergencyContacts[1].phone);
+    } else {
+      _contact2NameController = TextEditingController();
+      _contact2RelationController = TextEditingController();
+      _contact2PhoneController = TextEditingController();
+    }
+
+    _bloodGroup = citizen.bloodGroup.isNotEmpty && citizen.bloodGroup != 'Unknown' ? citizen.bloodGroup : 'O+';
+    _isDnr = citizen.isDnr;
+
+    _isProfileInitialized = true;
+  }
+
+  void _saveProfileFromTab(SwasthyaTapProvider provider) async {
+    if (_profileFormKey.currentState!.validate()) {
+      _profileFormKey.currentState!.save();
+      
+      final ageStr = _ageController.text.trim();
+      final age = ageStr.isNotEmpty ? int.tryParse(ageStr) : null;
+
+      final List<EmergencyContact> contacts = [
+        EmergencyContact(
+          name: _contact1NameController.text.trim(),
+          relation: _contact1RelationController.text.trim(),
+          phone: _contact1PhoneController.text.trim(),
+        ),
+      ];
+
+      if (_contact2NameController.text.trim().isNotEmpty &&
+          _contact2PhoneController.text.trim().isNotEmpty) {
+        contacts.add(EmergencyContact(
+          name: _contact2NameController.text.trim(),
+          relation: _contact2RelationController.text.trim(),
+          phone: _contact2PhoneController.text.trim(),
+        ));
+      }
+
+      final updatedProfile = provider.currentCitizen.copyWith(
+        fullName: _fullNameController.text.trim(),
+        bloodGroup: _bloodGroup,
+        age: age,
+        address: _addressController.text.trim(),
+        allergies: _allergiesController.text.trim(),
+        medications: _medicationsController.text.trim(),
+        emergencyContacts: contacts,
+        isDnr: _isDnr,
+        specialInstructions: _specialInstructionsController.text.trim(),
+        insuranceCompany: _insuranceCompanyController.text.trim(),
+        insurancePolicyNumber: _insurancePolicyNumberController.text.trim(),
+        chronicConditions: _chronicConditionsController.text.trim(),
+      );
+
+      await provider.updateProfile(updatedProfile);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile successfully saved to DB!'),
+            backgroundColor: AppTheme.accentTeal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please correct errors in the form first.'),
+            backgroundColor: AppTheme.accentRed,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  // Localizations Map for High-Fidelity App Conversion
+  static const Map<String, Map<String, String>> _localizations = {
+    'en': {
+      'good_morning': 'Good Morning, ',
+      'stay_healthy': 'Stay healthy, Stay safe',
+      'emergency_title': 'In Emergency,\nanyone can tap your card',
+      'emergency_sub': 'Your health information in < 1 second',
+      'quick_actions': 'Quick Actions',
+      'see_all': 'See All',
+      'tap_nfc': 'Tap NFC',
+      'scan_qr': 'Scan QR',
+      'blood_network': 'Blood Network',
+      'nearby_centers': 'Nearby Centers',
+      'emergency_alert': 'Emergency Alert',
+      'my_health_card': 'My Health Card',
+      'nfc_identity': 'Your NFC Health Identity',
+      'view_full_card': 'View Full Card',
+      'health_profile': 'Health Profile',
+      'complete_profile_desc': 'Complete your profile to help in emergencies',
+      'complete_profile_btn': 'Complete\nProfile',
+      'educational_videos': 'Educational Videos',
+      'report_health_issue': 'Report Health Issue',
+      'report_issue_desc': 'Report Dengue / Malaria / Virus symptoms',
+      'report_now': 'Report Now',
+      'blood_donation': 'Blood Donation',
+      'blood_donation_desc': 'Register as donor and save lives',
+      'register_now': 'Register Now',
+      
+      // Bottom Nav
+      'nav_home': 'Home',
+      'nav_scan': 'Scan',
+      'nav_profile': 'Profile',
+      'nav_learn': 'Learn',
+      'nav_more': 'More',
+    },
+    'hi': {
+      'good_morning': 'शुभ प्रभात, ',
+      'stay_healthy': 'स्वस्थ रहें, सुरक्षित रहें',
+      'emergency_title': 'आपातकाल में,\nकोई भी आपका कार्ड टैप कर सकता है',
+      'emergency_sub': 'आपकी स्वास्थ्य जानकारी < 1 सेकंड में',
+      'quick_actions': 'त्वरित कार्रवाई',
+      'see_all': 'सभी देखें',
+      'tap_nfc': 'एनएफसी टैप',
+      'scan_qr': 'क्यूआर स्कैन',
+      'blood_network': 'रक्त नेटवर्क',
+      'nearby_centers': 'पास के केंद्र',
+      'emergency_alert': 'आपातकालीन अलर्ट',
+      'my_health_card': 'मेरा स्वास्थ्य कार्ड',
+      'nfc_identity': 'आपकी एनएफसी स्वास्थ्य पहचान',
+      'view_full_card': 'पूरा कार्ड देखें',
+      'health_profile': 'स्वास्थ्य प्रोफ़ाइल',
+      'complete_profile_desc': 'आपात स्थिति में मदद के लिए प्रोफ़ाइल पूरी करें',
+      'complete_profile_btn': 'प्रोफ़ाइल\nपूरी करें',
+      'educational_videos': 'शैक्षणिक वीडियो',
+      'report_health_issue': 'स्वास्थ्य समस्या रिपोर्ट',
+      'report_issue_desc': 'डेंगू / मलेरिया / वायरस के लक्षणों की रिपोर्ट करें',
+      'report_now': 'अभी रिपोर्ट करें',
+      'blood_donation': 'रक्तदान',
+      'blood_donation_desc': 'दाता के रूप में पंजीकरण करें और जीवन बचाएं',
+      'register_now': 'अभी पंजीकरण करें',
+      
+      // Bottom Nav
+      'nav_home': 'होम',
+      'nav_scan': 'स्कैन',
+      'nav_profile': 'प्रोफ़ाइल',
+      'nav_learn': 'सीखें',
+      'nav_more': 'अधिक',
+    }
+  };
+
+  // Translation Helper Function
+  String _t(String key, String selectedLanguage) {
+    return TranslationService.t(context, key);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _cameraController = MobileScannerController();
+    _scannerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _cameraController.dispose();
+    _scannerController.dispose();
+    if (_isProfileInitialized) {
+      _fullNameController.dispose();
+      _ageController.dispose();
+      _addressController.dispose();
+      _phoneController.dispose();
+      _emailController.dispose();
+      _allergiesController.dispose();
+      _medicationsController.dispose();
+      _chronicConditionsController.dispose();
+      _insuranceCompanyController.dispose();
+      _insurancePolicyNumberController.dispose();
+      _specialInstructionsController.dispose();
+      _contact1NameController.dispose();
+      _contact1RelationController.dispose();
+      _contact1PhoneController.dispose();
+      _contact2NameController.dispose();
+      _contact2RelationController.dispose();
+      _contact2PhoneController.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onTabSelected(int index) async {
+    if (index == 1) {
+      try {
+        await _cameraController.start();
+      } catch (e) {
+        debugPrint('Error starting camera: $e');
+      }
+    } else {
+      try {
+        await _cameraController.stop();
+      } catch (e) {
+        debugPrint('Error stopping camera: $e');
+      }
+    }
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<SwasthyaTapProvider>(context);
+    final citizen = provider.currentCitizen;
+
+    return Scaffold(
+      backgroundColor: AppTheme.lightBg,
+      body: Stack(
+        children: [
+          // Main Body Content
+          SafeArea(
+            bottom: false,
+            top: _currentIndex != 1, // Full screen for scanner
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildHomeTab(context, provider, citizen),
+                _buildScanTab(context, provider, citizen),
+                _buildHealthProfileTab(context, provider, citizen),
+                _buildLearnTab(context, provider, citizen),
+                _buildMoreTab(context, provider, citizen),
+              ],
+            ),
+          ),
+
+          // Custom Frosted Glass Bottom Navigation Bar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomNavigationBar(provider),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 1. Home Tab ───────────────────────────────────────────────────────────
+  Widget _buildHomeTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Bar (Greeting + Profile + Settings/Notification)
+          _buildHomeTopBar(context, provider, citizen),
+          const SizedBox(height: 20),
+
+          // Red Emergency Banner
+          _buildEmergencyBanner(context, provider),
+          const SizedBox(height: 24),
+
+          // Quick Actions Row
+          _buildQuickActions(context, provider),
+          const SizedBox(height: 26),
+
+          // My Health Card Preview
+          _buildHealthCardPreview(context, provider, citizen),
+          const SizedBox(height: 26),
+
+          // Health Profile Ring
+          _buildHealthProfileProgress(context, provider),
+          const SizedBox(height: 26),
+
+          // Educational Videos
+          _buildEducationalVideos(context, provider),
+          const SizedBox(height: 26),
+
+          // Bottom Split Cards: Report Health Issue & Blood Donation
+          _buildBottomCards(context, provider),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeTopBar(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    return Row(
+      children: [
+        // Profile Avatar
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: Image.network(
+              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=150&h=150&q=80',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: AppTheme.accentTeal,
+                  alignment: Alignment.center,
+                  child: Text(
+                    citizen.fullName.substring(0, 2).toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        // Greeting Text
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    _t('good_morning', provider.selectedLanguage),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    '${citizen.fullName.split(" ")[0]} 👋',
+                    style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _t('stay_healthy', provider.selectedLanguage),
+                style: const TextStyle(color: AppTheme.accentTeal, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        // Notification Icon with Badge
+        Stack(
+          children: [
+            IconButton(
+              onPressed: () => _onTabSelected(4),
+              icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textPrimary, size: 26),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white,
+                elevation: 0.5,
+                padding: const EdgeInsets.all(10),
+              ),
+            ),
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: AppTheme.accentRed,
+                  shape: BoxShape.circle,
+                ),
+                child: const Text(
+                  '3',
+                  style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 10),
+        // Settings Icon
+        IconButton(
+          onPressed: () => _onTabSelected(4),
+          icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary, size: 26),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.white,
+            elevation: 0.5,
+            padding: const EdgeInsets.all(10),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmergencyBanner(BuildContext context, SwasthyaTapProvider provider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withOpacity(0.25),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            bottom: -15,
+            child: Opacity(
+              opacity: 0.12,
+              child: const Icon(Icons.contactless_outlined, size: 100, color: Colors.white),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _t('emergency_title', provider.selectedLanguage),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t('emergency_sub', provider.selectedLanguage),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Forward Arrow Circular button
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: AppTheme.accentRed,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context, SwasthyaTapProvider provider) {
+    final actions = [
+      {'icon': Icons.phone_android_rounded, 'label': _t('tap_nfc', provider.selectedLanguage), 'color': const Color(0xFF0F766E)},
+      {'icon': Icons.qr_code_scanner_rounded, 'label': _t('scan_qr', provider.selectedLanguage), 'color': const Color(0xFFF59E0B)},
+      {'icon': Icons.bloodtype_outlined, 'label': _t('blood_network', provider.selectedLanguage), 'color': const Color(0xFFDC2626)},
+      {'icon': Icons.local_hospital_outlined, 'label': _t('nearby_centers', provider.selectedLanguage), 'color': const Color(0xFF1E40AF)},
+      {'icon': Icons.notifications_active_outlined, 'label': _t('emergency_alert', provider.selectedLanguage), 'color': const Color(0xFFF97316)},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _t('quick_actions', provider.selectedLanguage),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+            GestureDetector(
+              onTap: () {},
+              child: Row(
+                children: [
+                  Text(
+                    _t('see_all', provider.selectedLanguage),
+                    style: const TextStyle(color: AppTheme.accentTeal, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 16, color: AppTheme.accentTeal),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: actions.length,
+            clipBehavior: Clip.none,
+            itemBuilder: (context, index) {
+              final action = actions[index];
+              return GestureDetector(
+                onTap: () {
+                  if (index == 1 || index == 0) {
+                    _onTabSelected(1);
+                  } else if (index == 2) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NearbyHealthCentersScreen(
+                          initialFilter: 'Blood Banks',
+                        ),
+                      ),
+                    );
+                  } else if (index == 3) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NearbyHealthCentersScreen(
+                          initialFilter: 'Hospitals',
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  width: 78,
+                  margin: const EdgeInsets.only(right: 14),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.borderColor),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          action['icon'] as IconData,
+                          color: action['color'] as Color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        action['label'] as String,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthCardPreview(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              _t('my_health_card', provider.selectedLanguage),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.verified_user_rounded, color: AppTheme.accentTeal, size: 16),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _t('nfc_identity', provider.selectedLanguage),
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CardViewerScreen(),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Text(
+                          _t('view_full_card', provider.selectedLanguage),
+                          style: const TextStyle(color: AppTheme.accentTeal, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.accentTeal),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // The Premium Card Preview
+            Expanded(
+              flex: 7,
+              child: Container(
+                height: 110,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF018086),
+                      Color(0xFF014757),
+                      Color(0xFF011E30),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF018086).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(
+                    children: [
+                      // Tricolor wave detail at bottom right
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        left: 45,
+                        height: 22,
+                        child: CustomPaint(
+                          painter: CardTricolorWavePainter(variant: 'Standard'),
+                        ),
+                      ),
+                      
+                      // Contactless waves at top right
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: CustomPaint(
+                          size: const Size(12, 13),
+                          painter: ContactlessWavesPainter(color: Colors.white.withOpacity(0.9)),
+                        ),
+                      ),
+
+                      // QR Code at bottom left
+                      Positioned(
+                        bottom: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Image.network(
+                            'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://swasthtap.in/citizen/${citizen.id}',
+                            width: 26,
+                            height: 26,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+
+                      // Center Logo, Name & Tagline
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            CustomPaint(
+                              size: const Size(24, 24),
+                              painter: HeartEcgPainter(color: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'SwasthTap',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                Text(
+                                  TranslationService.t(context, 'card_tagline'),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withOpacity(0.85),
+                                    fontSize: 6.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Dots indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.accentTeal, shape: BoxShape.circle)),
+            const SizedBox(width: 4),
+            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.borderColor, shape: BoxShape.circle)),
+            const SizedBox(width: 4),
+            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.borderColor, shape: BoxShape.circle)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthProfileProgress(BuildContext context, SwasthyaTapProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Progress Ring (75%)
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  value: 0.75,
+                  strokeWidth: 5.5,
+                  color: AppTheme.accentTeal,
+                  backgroundColor: AppTheme.borderColor.withOpacity(0.5),
+                ),
+              ),
+              const Text(
+                '75%',
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // Description
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t('health_profile', provider.selectedLanguage),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _t('complete_profile_desc', provider.selectedLanguage),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
+                ),
+                const SizedBox(height: 8),
+                // Linear Progress bar matching
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: Container(
+                    height: 5,
+                    width: 120,
+                    color: AppTheme.borderColor,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        height: 5,
+                        width: 90,
+                        color: AppTheme.accentTeal,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Complete button
+          OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditMedicalProfile()),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.accentTeal, width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            child: Text(
+              _t('complete_profile_btn', provider.selectedLanguage),
+              style: const TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold, fontSize: 11, height: 1.2),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEducationalVideos(BuildContext context, SwasthyaTapProvider provider) {
+    final videos = [
+      {'title': TranslationService.t(context, 'learn_v3_title'), 'duration': '4:35', 'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=300&h=180&q=80'},
+      {'title': TranslationService.t(context, 'learn_v4_title'), 'duration': '3:12', 'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=300&h=180&q=80'},
+      {'title': TranslationService.t(context, 'learn_v2_title'), 'duration': '3:45', 'image': 'https://images.unsplash.com/photo-1576086213369-97a306d36557?fit=crop&w=300&h=180&q=80'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _t('educational_videos', provider.selectedLanguage),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+            GestureDetector(
+              onTap: () => _onTabSelected(3),
+              child: Row(
+                children: [
+                  Text(
+                    _t('see_all', provider.selectedLanguage),
+                    style: const TextStyle(color: AppTheme.accentTeal, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 16, color: AppTheme.accentTeal),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: videos.length,
+            clipBehavior: Clip.none,
+            itemBuilder: (context, index) {
+              final video = videos[index];
+              return Container(
+                width: 170,
+                margin: const EdgeInsets.only(right: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.015),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Thumbnail
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Image.network(
+                                video['image']!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, e, s) => Container(color: AppTheme.borderColor),
+                              ),
+                            ),
+                            // Play Overlay Icon
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+                              ),
+                            ),
+                            // Duration
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  video['duration']!,
+                                  style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Text(
+                          video['title']!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomCards(BuildContext context, SwasthyaTapProvider provider) {
+    return Row(
+      children: [
+        // Report Health Issue Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)], // Light orange gradient
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFFD8A8)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.01),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.assignment_late_outlined, color: Color(0xFFF97316), size: 24),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _t('report_health_issue', provider.selectedLanguage),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _t('report_issue_desc', provider.selectedLanguage),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9.5, height: 1.3),
+                ),
+                const SizedBox(height: 14),
+                // Button
+                GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(_t('report_disease_simulated', provider.selectedLanguage)),
+                        backgroundColor: AppTheme.accentTeal,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _t('report_now', provider.selectedLanguage),
+                          style: const TextStyle(color: Color(0xFFF97316), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFFF97316)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        // Blood Donation Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF0FDF4), Color(0xFFDCFCE7)], // Light green gradient
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.01),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.water_drop_outlined, color: Color(0xFF16A34A), size: 24),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _t('blood_donation', provider.selectedLanguage),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _t('blood_donation_desc', provider.selectedLanguage),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9.5, height: 1.3),
+                ),
+                const SizedBox(height: 14),
+                // Button
+                GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(_t('blood_donor_success', provider.selectedLanguage)),
+                        backgroundColor: AppTheme.accentTeal,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _t('register_now', provider.selectedLanguage),
+                          style: const TextStyle(color: Color(0xFF0F766E), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF0F766E)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── 2. Scan Tab (Real Camera Scan Screen) ────────────────────────
+  Widget _buildScanTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black, // Dark container background
+      child: Stack(
+        children: [
+          // 1. Live Camera Stream using mobile_scanner (only built when this tab is selected)
+          Positioned.fill(
+            child: _currentIndex == 1
+                ? MobileScanner(
+                    controller: _cameraController,
+                    onDetect: (BarcodeCapture capture) {
+                      final List<Barcode> barcodes = capture.barcodes;
+                      if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                        final String rawValue = barcodes.first.rawValue!;
+                        _processScannedData(rawValue, provider);
+                      }
+                    },
+                    errorBuilder: (context, error) {
+                      // Return a dark background when no camera/webcam is active
+                      return Container(
+                        color: Colors.black87,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 48),
+                            const SizedBox(height: 12),
+                            Text(
+                              TranslationService.t(context, 'no_camera'),
+                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : const SizedBox.shrink(),
+          ),
+          
+          // 2. Dark Overlay with Transparent Center Cutout Frame (using BlendMode.srcOut trick)
+          Positioned.fill(
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.55),
+                BlendMode.srcOut,
+              ),
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.black,
+                      backgroundBlendMode: BlendMode.dstOut,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 240,
+                      height: 240,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. Central Viewfinder Corners + Sliding Laser Line (Perfectly Centered)
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                // Simulate scanning Rajesh's card on tap for testing/debugging
+                _processScannedData('x7k9m2', provider);
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Viewfinder Cutout Spacer matches the transparent cutout size
+                  SizedBox(
+                    width: 240,
+                    height: 240,
+                    child: Stack(
+                      children: [
+                        // Animated vertical sliding scanning laser line
+                        AnimatedBuilder(
+                          animation: _scannerController,
+                          builder: (context, child) {
+                            return Align(
+                              alignment: Alignment(0, -0.8 + (_scannerController.value * 1.6)),
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            height: 3.5,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2DD4BF),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF2DD4BF).withOpacity(0.85),
+                                  blurRadius: 8,
+                                  spreadRadius: 2.5,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Viewfinder corners painter (slightly larger than cutout to wrap it)
+                  SizedBox(
+                    width: 252,
+                    height: 252,
+                    child: CustomPaint(
+                      painter: ScannerFramePainter(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // 4. Header buttons overlayed (Back button, Help button)
+          Positioned(
+            top: 24,
+            left: 20,
+            right: 20,
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => _onTabSelected(0),
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withOpacity(0.5),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Text(TranslationService.t(context, 'scanning_help'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                        content: Text(
+                          TranslationService.t(context, 'scanning_help_content'),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(TranslationService.t(context, 'got_it'), style: const TextStyle(color: AppTheme.accentTeal)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          TranslationService.t(context, 'need_help'),
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 5. Instruction Banner positioned above the viewfinder
+          Positioned(
+            top: 100,
+            left: 30,
+            right: 30,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.65),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    TranslationService.t(context, 'scan_st_qr'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    TranslationService.t(context, 'align_qr_frame'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 6. Simulation Helper Badge (Placed in the gap below the viewfinder)
+          Positioned(
+            bottom: 245,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => _processScannedData('x7k9m2', provider),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    TranslationService.t(context, 'tap_viewfinder_simulate'),
+                    style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // 7. Bottom Action Controls & Security Disclaimer (Positioned above the bottom navigation bar)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 96,
+            child: Column(
+              children: [
+                // Flash and Gallery buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Toggle Flash
+                    GestureDetector(
+                      onTap: () async {
+                        setState(() {
+                          _flashOn = !_flashOn;
+                        });
+                        try {
+                          await _cameraController.toggleTorch();
+                        } catch (e) {
+                          debugPrint('Torch not supported: $e');
+                        }
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _flashOn ? const Color(0xFF2DD4BF).withOpacity(0.12) : Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _flashOn ? const Color(0xFF2DD4BF) : Colors.white, width: 1.5),
+                            ),
+                            child: Icon(
+                              _flashOn ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+                              color: _flashOn ? const Color(0xFF2DD4BF) : Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(TranslationService.t(context, 'flash'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 32),
+                    // Choose from Gallery
+                    GestureDetector(
+                      onTap: () async {
+                        try {
+                          final picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                          if (image != null) {
+                            if (kIsWeb) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Processing selected image (Web Simulation)...'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                              await Future.delayed(const Duration(milliseconds: 800));
+                              _processScannedData('x7k9m2', provider);
+                            } else {
+                              final BarcodeCapture? capture = await _cameraController.analyzeImage(image.path);
+                              if (capture != null && capture.barcodes.isNotEmpty) {
+                                final String? rawValue = capture.barcodes.first.rawValue;
+                                if (rawValue != null) {
+                                  _processScannedData(rawValue, provider);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('No QR code text detected in this image.')),
+                                  );
+                                }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('No QR code detected in this image.')),
+                                );
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error choosing/scanning image: $e')),
+                          );
+                        }
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(Icons.image_outlined, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(TranslationService.t(context, 'gallery'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 32),
+                    // Temp Data Button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ScannedProfileScreen(),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(TranslationService.t(context, 'temp_data'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Privacy disclaimer
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 16),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              TranslationService.t(context, 'data_secure'),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              TranslationService.t(context, 'no_store_scanned_info'),
+                              style: const TextStyle(color: Colors.white70, fontSize: 10.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 16),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Decodes the raw text from camera and routes appropriately
+  void _processScannedData(String rawValue, SwasthyaTapProvider provider) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    
+    try {
+      final String trimmed = rawValue.trim();
+      
+      // 1. Try JSON parsing
+      if (trimmed.startsWith('{')) {
+        final Map<String, dynamic> data = jsonDecode(trimmed);
+        if (data.containsKey('fullName')) {
+          final id = data['id'] ?? 'scanned_${DateTime.now().millisecondsSinceEpoch}';
+          final newCitizen = MedicalProfile(
+            id: id,
+            fullName: data['fullName'] ?? 'Scanned User',
+            bloodGroup: data['bloodGroup'] ?? 'O+',
+            allergies: data['allergies'] ?? 'None',
+            medications: data['medications'] ?? 'None',
+            isDnr: data['isDnr'] ?? false,
+            emergencyContacts: [],
+            isBloodDonor: data['isBloodDonor'] ?? false,
+            donorRadiusKm: 5.0,
+            lifeCredits: 0,
+            specialInstructions: data['specialInstructions'] ?? 'None',
+            phoneNumber: data['phoneNumber'] ?? '9876543210',
+          );
+          
+          // Add to local profile list and set active
+          provider.profiles.removeWhere((p) => p.id == id);
+          provider.profiles.add(newCitizen);
+          provider.setCurrentCitizen(id);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully Scanned Profile: ${newCitizen.fullName}!'),
+              backgroundColor: AppTheme.accentGreen,
+            ),
+          );
+        }
+      } 
+      // 2. Try URL / ID parsing
+      else {
+        String extractedId = trimmed;
+        if (trimmed.contains('/')) {
+          extractedId = trimmed.split('/').last;
+        }
+        
+        bool found = false;
+        for (var p in provider.profiles) {
+          if (p.id.toLowerCase() == extractedId.toLowerCase()) {
+            provider.setCurrentCitizen(p.id);
+            found = true;
+            break;
+          }
+        }
+        
+        if (found) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully Decoded Card ID: $extractedId!'),
+              backgroundColor: AppTheme.accentGreen,
+            ),
+          );
+        } else {
+          // If profile ID is not found, dynamically seed a mockup profile so the scanner still works fully!
+          final mockCitizen = MedicalProfile(
+            id: extractedId,
+            fullName: 'Scanned Card User',
+            bloodGroup: 'B+ Group',
+            allergies: 'Penicillin, Dust',
+            medications: 'Metformin 500mg, Atorvastatin',
+            isDnr: false,
+            emergencyContacts: [
+              EmergencyContact(name: 'Aditi Sharma', relation: 'Spouse', phone: '9876543210'),
+            ],
+            isBloodDonor: true,
+            donorRadiusKm: 4.5,
+            lifeCredits: 12,
+            specialInstructions: 'Patient suffers from Type-2 diabetes.',
+            phoneNumber: '9876543210',
+          );
+          provider.profiles.add(mockCitizen);
+          provider.setCurrentCitizen(mockCitizen.id);
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Scanned new card. Created profile for: ${mockCitizen.fullName}!'),
+              backgroundColor: AppTheme.accentGreen,
+            ),
+          );
+        }
+      }
+      
+      // Successfully scanned, jump to the Profile Tab
+      _onTabSelected(2);
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Scanned Raw Text: $rawValue'),
+          backgroundColor: AppTheme.accentTeal,
+        ),
+      );
+    }
+  }
+
+  Widget _buildHealthProfileTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    _initProfileFields(citizen);
+
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      child: Column(
+        children: [
+          // Custom Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Back Button
+                GestureDetector(
+                  onTap: () {
+                    _onTabSelected(0);
+                  },
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Color(0xFF64748B),
+                    size: 20,
+                  ),
+                ),
+                // Logo in the center
+                _buildLogoHeader(),
+                // Actions: Save button + three dots menu
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _saveProfileFromTab(provider),
+                      icon: const Icon(Icons.save_rounded, size: 14, color: Colors.white),
+                      label: const Text('Save', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentTeal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.more_vert_rounded,
+                      color: Color(0xFF0F172A),
+                      size: 24,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Scrollable Body
+          Expanded(
+            child: Form(
+              key: _profileFormKey,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                child: Column(
+                  children: [
+                    // Profile details card (no longer animated to avoid distortion/blurriness)
+                    _buildProfileDetailsCard(context, citizen),
+                    const SizedBox(height: 18),
+
+                  // 11 Expandable Item Cards
+                  Column(
+                    children: [
+                      // 1. Personal Information
+                      _ProfileSectionTile(
+                        number: 1,
+                        title: _t('personal_info', provider.selectedLanguage),
+                        subtitle: _t('personal_info_sub', provider.selectedLanguage),
+                        icon: Icons.person_rounded,
+                        iconColor: const Color(0xFF0F766E),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _fullNameController,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('full_name', provider.selectedLanguage),
+                                icon: Icons.person,
+                              ),
+                              validator: (val) => val == null || val.trim().isEmpty ? 'Full name required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _ageController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('label_age', provider.selectedLanguage),
+                                icon: Icons.calendar_today,
+                              ),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) return 'Age required';
+                                final age = int.tryParse(val);
+                                if (age == null || age <= 0 || age > 120) return 'Invalid age';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _addressController,
+                              maxLines: 2,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('label_address', provider.selectedLanguage),
+                                icon: Icons.home,
+                              ),
+                              validator: (val) => val == null || val.trim().isEmpty ? 'Address required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('phone_number', provider.selectedLanguage),
+                                icon: Icons.phone_android,
+                              ),
+                              validator: (val) => val == null || val.trim().isEmpty ? 'Mobile required' : null,
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _emailController,
+                              enabled: false,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('email_id', provider.selectedLanguage),
+                                icon: Icons.email,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 2. Blood Group
+                      _ProfileSectionTile(
+                        number: 2,
+                        title: _t('blood_group', provider.selectedLanguage),
+                        subtitle: _t('blood_group_sub', provider.selectedLanguage),
+                        icon: Icons.water_drop_rounded,
+                        iconColor: const Color(0xFFEF4444),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<String>(
+                              value: _bloodGroup,
+                              dropdownColor: Colors.white,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: _t('blood_group', provider.selectedLanguage),
+                                icon: Icons.bloodtype,
+                              ),
+                              items: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) {
+                                return DropdownMenuItem(value: bg, child: Text(bg));
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() {
+                                    _bloodGroup = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 3. Allergies
+                      _ProfileSectionTile(
+                        number: 3,
+                        title: _t('allergies', provider.selectedLanguage),
+                        subtitle: _t('allergies_sub', provider.selectedLanguage),
+                        icon: Icons.warning_amber_rounded,
+                        iconColor: const Color(0xFFF97316),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _allergiesController,
+                              maxLines: 2,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Allergies Details',
+                                icon: Icons.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 4. Current Medications
+                      _ProfileSectionTile(
+                        number: 4,
+                        title: _t('current_medications', provider.selectedLanguage),
+                        subtitle: _t('current_medications_sub', provider.selectedLanguage),
+                        icon: Icons.medical_services_rounded,
+                        iconColor: const Color(0xFF3B82F6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _medicationsController,
+                              maxLines: 2,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Current Medications',
+                                icon: Icons.medication,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 5. Medical Conditions
+                      _ProfileSectionTile(
+                        number: 5,
+                        title: _t('medical_conditions', provider.selectedLanguage),
+                        subtitle: _t('medical_conditions_sub', provider.selectedLanguage),
+                        icon: Icons.monitor_heart_rounded,
+                        iconColor: const Color(0xFF8B5CF6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _chronicConditionsController,
+                              maxLines: 2,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Chronic Conditions',
+                                icon: Icons.monitor_heart,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 6. Emergency Contacts
+                      _ProfileSectionTile(
+                        number: 6,
+                        title: _t('emergency_contacts', provider.selectedLanguage),
+                        subtitle: _t('emergency_contacts_sub', provider.selectedLanguage),
+                        icon: Icons.people_alt_rounded,
+                        iconColor: const Color(0xFF10B981),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Primary Emergency Contact',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F766E)),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _contact1NameController,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Contact Name',
+                                icon: Icons.person,
+                              ),
+                              validator: (val) => val == null || val.trim().isEmpty ? 'Primary Contact Name required' : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _contact1RelationController,
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                                    decoration: AppTheme.premiumInputDecoration(
+                                      label: 'Relation',
+                                      icon: Icons.family_restroom,
+                                    ),
+                                    validator: (val) => val == null || val.trim().isEmpty ? 'Relation required' : null,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _contact1PhoneController,
+                                    keyboardType: TextInputType.phone,
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                                    decoration: AppTheme.premiumInputDecoration(
+                                      label: 'Phone Number',
+                                      icon: Icons.phone,
+                                    ),
+                                    validator: (val) => val == null || val.trim().isEmpty ? 'Phone required' : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 24),
+                            const Text(
+                              'Secondary Emergency Contact (Optional)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F766E)),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _contact2NameController,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Contact Name',
+                                icon: Icons.person,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _contact2RelationController,
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                                    decoration: AppTheme.premiumInputDecoration(
+                                      label: 'Relation',
+                                      icon: Icons.family_restroom,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _contact2PhoneController,
+                                    keyboardType: TextInputType.phone,
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                                    decoration: AppTheme.premiumInputDecoration(
+                                      label: 'Phone Number',
+                                      icon: Icons.phone,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 7. Special Medical Instructions
+                      _ProfileSectionTile(
+                        number: 7,
+                        title: 'Special Instructions',
+                        subtitle: 'Critical information for first responders',
+                        icon: Icons.health_and_safety_rounded,
+                        iconColor: const Color(0xFF10B981),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _specialInstructionsController,
+                              maxLines: 3,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Special Medical Instructions',
+                                icon: Icons.description,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 8. Insurance Details
+                      _ProfileSectionTile(
+                        number: 8,
+                        title: _t('insurance_schemes', provider.selectedLanguage),
+                        subtitle: _t('insurance_schemes_sub', provider.selectedLanguage),
+                        icon: Icons.umbrella_rounded,
+                        iconColor: const Color(0xFF3B82F6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextFormField(
+                              controller: _insuranceCompanyController,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Insurer Company Name',
+                                icon: Icons.business,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _insurancePolicyNumberController,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                              decoration: AppTheme.premiumInputDecoration(
+                                label: 'Policy Number',
+                                icon: Icons.description,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 9. Medical Reports
+                      _ProfileSectionTile(
+                        number: 9,
+                        title: _t('medical_reports', provider.selectedLanguage),
+                        subtitle: _t('medical_reports_sub', provider.selectedLanguage),
+                        icon: Icons.description_rounded,
+                        iconColor: const Color(0xFF8B5CF6),
+                        trailing: GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Upload new report flow...')),
+                            );
+                          },
+                          child: const Icon(Icons.add_rounded, color: Color(0xFF0F766E), size: 18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'No medical reports uploaded yet.',
+                              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Select PDF or Image from device...')),
+                                );
+                              },
+                              icon: const Icon(Icons.upload_file, size: 14),
+                              label: const Text('Upload Report', style: TextStyle(fontSize: 11)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0F766E),
+                                side: const BorderSide(color: Color(0xFF0F766E)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 10. Organ Donation
+                      _ProfileSectionTile(
+                        number: 10,
+                        title: _t('organ_donation', provider.selectedLanguage),
+                        subtitle: _t('organ_donation_sub', provider.selectedLanguage),
+                        icon: Icons.favorite_rounded,
+                        iconColor: const Color(0xFFF43F5E),
+                        trailing: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const OrganDonationPledgeScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF0F766E), width: 1),
+                            ),
+                            child: Text(
+                              citizen.organPledge != null ? _t('manage', provider.selectedLanguage) : 'Pledge',
+                              style: const TextStyle(
+                                color: Color(0xFF0F766E),
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        child: citizen.organPledge != null
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildDetailRow(_t('notto_id', provider.selectedLanguage), citizen.organPledge!.pledgeId),
+                                  _buildDetailRow(_t('pledged_organs', provider.selectedLanguage), citizen.organPledge!.pledgedOrgans.join(', ')),
+                                  _buildDetailRow(_t('signed_date', provider.selectedLanguage), citizen.organPledge!.signedDate),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'No Organ Donation Pledge registered yet.',
+                                    style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const OrganDonationPledgeScreen()),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF43F5E),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    child: const Text('Register Pledge Now', style: TextStyle(fontSize: 11, color: Colors.white)),
+                                  ),
+                                ],
+                              ),
+                      ),
+
+                      // 11. Privacy Settings
+                      _ProfileSectionTile(
+                        number: 11,
+                        title: _t('privacy_settings', provider.selectedLanguage),
+                        subtitle: _t('privacy_settings_sub', provider.selectedLanguage),
+                        icon: Icons.lock_outline_rounded,
+                        iconColor: const Color(0xFF0F766E),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRow(_t('access_pin', provider.selectedLanguage), _t('pin_enabled', provider.selectedLanguage)),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Emergency Bypass PIN',
+                                        style: TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        'Allow responders to bypass PIN in emergency',
+                                        style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: true,
+                                  onChanged: (val) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Bypass PIN option updated locally.')),
+                                    );
+                                  },
+                                  activeColor: const Color(0xFF0F766E),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Footer security badges
+                  _buildFooterSecurityBadges(),
+                  const SizedBox(height: 20),
+
+                  // Bottom Action Buttons
+                  _buildBottomActions(context),
+                ],
+              ),
+            ),
+          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoHeader() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(
+              Icons.health_and_safety_rounded,
+              color: Color(0xFF0F766E),
+              size: 26,
+            ),
+            Positioned(
+              top: -8,
+              child: const Icon(
+                Icons.wifi_rounded,
+                color: Color(0xFF0F766E),
+                size: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SwasthyaTap',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+                letterSpacing: -0.3,
+              ),
+            ),
+            Text(
+              'One Tap Can Save Your Life',
+              style: GoogleFonts.inter(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileDetailsCard(BuildContext context, MedicalProfile citizen) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left: Avatar with Edit Icon
+          Stack(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF0F766E), width: 2),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(38),
+                  child: (citizen.email == 'rajesh.kumar@gmail.com' || citizen.fullName == 'Rajesh Kumar')
+                      ? Image.network(
+                          'rajesh_avatar.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildInitialsPlaceholder(citizen);
+                          },
+                        )
+                      : _buildInitialsPlaceholder(citizen),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0F766E),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          // Middle: Text details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        citizen.fullName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // SwasthyaTap UID Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE6F4F1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    TranslationService.t(context, 'st_uid'),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F766E),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // STUID
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'STUID: ST91-XXXX-XXXX-${citizen.id.toUpperCase()}',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.copy_rounded,
+                      color: Color(0xFF94A3B8),
+                      size: 11,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Badges Row
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    // ABHA Linked Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.link, color: Color(0xFF15803D), size: 10),
+                          const SizedBox(width: 2),
+                          Text(
+                            TranslationService.t(context, 'abha_linked'),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Aadhaar badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.fingerprint_rounded, color: Color(0xFF64748B), size: 10),
+                          const SizedBox(width: 2),
+                          Text(
+                            TranslationService.t(context, 'aadhaar_badge'),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Right: Radial Complete Progress
+          const SizedBox(width: 8),
+          Column(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: CircularProgressIndicator(
+                      value: 0.78,
+                      strokeWidth: 5,
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0F766E)),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '78%',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        TranslationService.t(context, 'complete'),
+                        style: const TextStyle(
+                          fontSize: 6,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                TranslationService.t(context, 'profile_complete'),
+                style: const TextStyle(
+                  fontSize: 7.5,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInitialsPlaceholder(MedicalProfile citizen) {
+    String initials = '';
+    if (citizen.fullName.trim().isNotEmpty) {
+      final parts = citizen.fullName.trim().split(' ');
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[1][0]).toUpperCase();
+      } else if (parts[0].isNotEmpty) {
+        initials = parts[0][0].toUpperCase();
+      }
+    }
+    if (initials.isEmpty) {
+      initials = 'ST';
+    }
+    return Container(
+      color: const Color(0xFF0F766E),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF0F172A), fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterSecurityBadges() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildSecurityBadge(Icons.shield_outlined, TranslationService.t(context, 'data_encrypted_secure')),
+          _buildSecurityBadge(Icons.lock_outline_rounded, TranslationService.t(context, 'pin_protected_badge')),
+          _buildSecurityBadge(Icons.nfc_outlined, TranslationService.t(context, 'share_nfc_only')),
+          _buildSecurityBadge(Icons.verified_user_outlined, TranslationService.t(context, 'hipaa_dpdp_compliant')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityBadge(IconData icon, String text) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: const Color(0xFF0F766E), size: 18),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF64748B),
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActions(BuildContext context) {
+    return Column(
+      children: [
+        // Download My Data
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F766E),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Downloading health report (PDF)...')),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Download My Data',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Export your health data (PDF)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Delete Account
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFCA5A5), width: 1),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Delete account flow initiated...')),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF991B1B),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Permanently delete your data & account',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF991B1B), size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Info text
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.verified_user_rounded, color: Color(0xFF64748B), size: 12),
+            const SizedBox(width: 4),
+            Text(
+              'You will be asked to confirm with your PIN before deleting your account.',
+              style: GoogleFonts.inter(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+
+  // ─── 4. Learn Tab (Educational Videos) ─────────────────────────────────────
+  Widget _buildLearnTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    final categories = ['All', 'Emergency', 'Dengue/Malaria', 'First Aid', 'Blood Donation'];
+    final categoryDisplayNames = {
+      'All': TranslationService.t(context, 'all'),
+      'Emergency': TranslationService.t(context, 'emergency'),
+      'Dengue/Malaria': TranslationService.t(context, 'dengue_prevention'),
+      'First Aid': TranslationService.t(context, 'first_aid'),
+      'Blood Donation': TranslationService.t(context, 'blood_donation'),
+    };
+    
+    final featuredVideos = [
+      {
+        'title': TranslationService.t(context, 'learn_f1_title'),
+        'subtitle': TranslationService.t(context, 'learn_f1_sub'),
+        'duration': '2:45',
+        'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=600&h=300&q=80',
+      },
+      {
+        'title': TranslationService.t(context, 'learn_f2_title'),
+        'subtitle': TranslationService.t(context, 'learn_f2_sub'),
+        'duration': '1:30',
+        'image': 'https://images.unsplash.com/photo-1518364538800-6bcb3f25da49?fit=crop&w=600&h=300&q=80',
+      },
+      {
+        'title': TranslationService.t(context, 'learn_f3_title'),
+        'subtitle': TranslationService.t(context, 'learn_f3_sub'),
+        'duration': '3:15',
+        'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=600&h=300&q=80',
+      },
+    ];
+
+    final allVideos = [
+      {
+        'title': TranslationService.t(context, 'learn_v1_title'),
+        'duration': '3:12',
+        'category': 'Emergency',
+        'views': '125K',
+        'image': 'https://images.unsplash.com/photo-1518364538800-6bcb3f25da49?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+      {
+        'title': TranslationService.t(context, 'learn_v2_title'),
+        'duration': '2:36',
+        'category': 'Dengue/Malaria',
+        'views': '98K',
+        'image': 'https://images.unsplash.com/photo-1576086213369-97a306d36557?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+      {
+        'title': TranslationService.t(context, 'learn_v3_title'),
+        'duration': '5:08',
+        'category': 'First Aid',
+        'views': '210K',
+        'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+      {
+        'title': TranslationService.t(context, 'learn_v4_title'),
+        'duration': '4:22',
+        'category': 'Blood Donation',
+        'views': '87K',
+        'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+      {
+        'title': TranslationService.t(context, 'learn_v5_title'),
+        'duration': '3:45',
+        'category': 'Emergency',
+        'views': '66K',
+        'image': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+      {
+        'title': TranslationService.t(context, 'learn_v6_title'),
+        'duration': '2:50',
+        'category': 'Dengue/Malaria',
+        'views': '54K',
+        'image': 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?fit=crop&w=350&h=220&q=80',
+        'verified': true,
+      },
+    ];
+
+    // Filter videos based on selection
+    final selectedCategory = categories[_selectedLearnCategoryIndex];
+    final filteredVideos = selectedCategory == 'All'
+        ? allVideos
+        : allVideos.where((v) => v['category'] == selectedCategory).toList();
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Header Bar: Back Arrow, Education Cap + Heart Icon, Title & Subtitle, Languages Dropdown, Search Icon
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+                onPressed: () {
+                  setState(() {
+                    _currentIndex = 0; // Go back to Home
+                  });
+                },
+              ),
+              const SizedBox(width: 4),
+              CustomPaint(
+                size: const Size(36, 36),
+                painter: HealthEducationLogoPainter(),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      TranslationService.t(context, 'health_education'),
+                      style: GoogleFonts.outfit(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      TranslationService.t(context, 'health_edu_sub'),
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Languages button
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, size: 14, color: Color(0xFF64748B)),
+                    const SizedBox(width: 4),
+                    Text(
+                      TranslationService.t(context, 'languages_btn'),
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              
+              // Search icon button
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF0F172A)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 2. Categories Horizontal Scroll Bar + Filter Button
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final isSelected = _selectedLearnCategoryIndex == index;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedLearnCategoryIndex = index;
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF0D9488) : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? Colors.transparent : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              categoryDisplayNames[categories[index]] ?? categories[index],
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF0F172A)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 3. Horizontal Featured Video Card Slider
+          SizedBox(
+            height: 190,
+            child: PageView.builder(
+              itemCount: featuredVideos.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _featuredActiveIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                final fVideo = featuredVideos[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    image: DecorationImage(
+                      image: NetworkImage(fVideo['image']!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Dark Overlay for text legibility
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.1),
+                                Colors.black.withOpacity(0.7),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Featured label
+                      Positioned(
+                        top: 14,
+                        left: 14,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D9488),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            TranslationService.t(context, 'featured_label'),
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Center Play Button
+                      Center(
+                        child: Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: Colors.white.withOpacity(0.9),
+                          size: 48,
+                        ),
+                      ),
+
+                      // Text and details at bottom
+                      Positioned(
+                        left: 16,
+                        bottom: 16,
+                        right: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fVideo['title']!,
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fVideo['subtitle']!,
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Duration overlay
+                      Positioned(
+                        right: 14,
+                        bottom: 14,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            fVideo['duration']!,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Small download icon on featured
+                      Positioned(
+                        right: 50,
+                        bottom: 12,
+                        child: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          child: const Icon(Icons.download_rounded, size: 12, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Featured Dot Indicators
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(featuredVideos.length, (index) {
+              final isActive = _featuredActiveIndex == index;
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isActive ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFF0D9488) : const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+
+          // 4. View / Format Selector Row (Dropdown language + Grid/List toggles)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // English dropdown card + languages badge
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.translate_rounded, size: 12, color: Color(0xFF64748B)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _selectedLearnLanguage,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF0F172A)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline_rounded, size: 14, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 4),
+                      Text(
+                        TranslationService.t(context, 'languages_avail'),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Grid/List toggle icons
+              Row(
+                children: [
+                  // Grid View icon
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isLearnGridView = true;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _isLearnGridView ? const Color(0xFFE6F4F1) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.grid_view_rounded,
+                        size: 16,
+                        color: _isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // List View icon
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isLearnGridView = false;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: !_isLearnGridView ? const Color(0xFFE6F4F1) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: !_isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.view_list_rounded,
+                        size: 16,
+                        color: !_isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 5. Video Content Grid or List Layout
+          _isLearnGridView
+              ? GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredVideos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.81,
+                  ),
+                  itemBuilder: (context, index) {
+                    final video = filteredVideos[index];
+                    return _buildGridVideoCard(video);
+                  },
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredVideos.length,
+                  itemBuilder: (context, index) {
+                    final video = filteredVideos[index];
+                    return _buildListVideoCard(video);
+                  },
+                ),
+          const SizedBox(height: 24),
+
+          // 6. Downloaded Videos Banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDBEAFE)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.download_done_rounded, color: Color(0xFF10B981), size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        TranslationService.t(context, 'downloaded_offline'),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        TranslationService.t(context, 'learn_anywhere'),
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(TranslationService.t(context, 'downloads_soon'))),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        TranslationService.t(context, 'view_downloads'),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1D4ED8),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Grid Video Card Item Helper
+  Widget _buildGridVideoCard(Map<String, dynamic> video) {
+    Color tagColor = const Color(0xFF0F766E);
+    Color tagBg = const Color(0xFFCCFBF1);
+    
+    switch (video['category']) {
+      case 'Emergency':
+        tagColor = const Color(0xFFEF4444);
+        tagBg = const Color(0xFFFEE2E2);
+        break;
+      case 'Dengue/Malaria':
+        tagColor = const Color(0xFF059669);
+        tagBg = const Color(0xFFD1FAE5);
+        break;
+      case 'First Aid':
+        tagColor = const Color(0xFF7C3AED);
+        tagBg = const Color(0xFFF3E8FF);
+        break;
+      case 'Blood Donation':
+        tagColor = const Color(0xFFE11D48);
+        tagBg = const Color(0xFFFFE4E6);
+        break;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thumbnail portion
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Image.network(
+                  video['image']!,
+                  height: 95,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, e, s) => Container(height: 95, color: const Color(0xFFF1F5F9)),
+                ),
+              ),
+              
+              // Play button overlay
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+                  ),
+                ),
+              ),
+
+              // Top right check badge
+              if (video['verified'] == true)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
+                  ),
+                ),
+
+              // Duration bottom right
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    video['duration']!,
+                    style: GoogleFonts.inter(
+                      fontSize: 8.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // Text Details
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    video['title']!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
+                      height: 1.25,
+                    ),
+                  ),
+                  
+                  // Label tags & options row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: tagBg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                video['category']!,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: tagColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '🇮🇳 ${video['views']} views',
+                              style: GoogleFonts.inter(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.more_vert, size: 14, color: Color(0xFF64748B)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // List Video Card Item Helper
+  Widget _buildListVideoCard(Map<String, dynamic> video) {
+    Color tagColor = const Color(0xFF0F766E);
+    Color tagBg = const Color(0xFFCCFBF1);
+    
+    switch (video['category']) {
+      case 'Emergency':
+        tagColor = const Color(0xFFEF4444);
+        tagBg = const Color(0xFFFEE2E2);
+        break;
+      case 'Dengue/Malaria':
+        tagColor = const Color(0xFF059669);
+        tagBg = const Color(0xFFD1FAE5);
+        break;
+      case 'First Aid':
+        tagColor = const Color(0xFF7C3AED);
+        tagBg = const Color(0xFFF3E8FF);
+        break;
+      case 'Blood Donation':
+        tagColor = const Color(0xFFE11D48);
+        tagBg = const Color(0xFFFFE4E6);
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          // Thumbnail portion
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                child: Image.network(
+                  video['image']!,
+                  height: 84,
+                  width: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, e, s) => Container(height: 84, width: 120, color: const Color(0xFFF1F5F9)),
+                ),
+              ),
+              
+              // Play button overlay
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
+                  ),
+                ),
+              ),
+
+              // Duration
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    video['duration']!,
+                    style: GoogleFonts.inter(
+                      fontSize: 8.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Text details
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: tagBg,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          video['category']!,
+                          style: GoogleFonts.inter(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.bold,
+                            color: tagColor,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.more_vert, size: 14, color: Color(0xFF64748B)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    video['title']!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '🇮🇳 ${video['views']} views',
+                    style: GoogleFonts.inter(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── 5. More Tab (Settings Screen) ─────────────────────────────────────────
+  Widget _buildMoreTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            TranslationService.t(context, 'settings_title'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 18),
+
+          // User info header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppTheme.accentTeal.withOpacity(0.1),
+                  radius: 24,
+                  child: const Icon(Icons.person, color: AppTheme.accentTeal, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        citizen.fullName,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'UID: ST-${citizen.id.toUpperCase()}',
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const EditMedicalProfile()));
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.accentTeal),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(TranslationService.t(context, 'edit_btn'), style: const TextStyle(color: AppTheme.accentTeal, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Settings List
+          _buildSettingsGroup(TranslationService.t(context, 'account_section'), [
+            _buildSettingsItem(Icons.verified_user_rounded, TranslationService.t(context, 'privacy_security'), TranslationService.t(context, 'privacy_security_sub')),
+            _buildSettingsItem(
+              Icons.language_rounded,
+              TranslationService.t(context, 'app_language'),
+              provider.selectedLanguage == 'Hindi' ? 'हिन्दी' : 'English',
+              trailingIcon: Icons.swap_horiz_rounded,
+              onTap: () {
+                _showLanguageSwitcher(context, provider);
+              },
+            ),
+            _buildSettingsItem(Icons.notifications_none_rounded, TranslationService.t(context, 'emergency_alerts_setting'), TranslationService.t(context, 'enabled')),
+          ]),
+          const SizedBox(height: 20),
+
+          _buildSettingsGroup(TranslationService.t(context, 'my_health_cards_section'), [
+            _buildSettingsItem(Icons.contactless_rounded, TranslationService.t(context, 'linked_nfc_cards'), TranslationService.t(context, 'active_card_count')),
+            _buildSettingsItem(Icons.people_outline_rounded, TranslationService.t(context, 'family_profiles'), TranslationService.t(context, 'family_added_count')),
+          ]),
+          const SizedBox(height: 20),
+
+          _buildSettingsGroup(TranslationService.t(context, 'help_legal_section'), [
+            _buildSettingsItem(Icons.help_outline_rounded, TranslationService.t(context, 'support_faq'), TranslationService.t(context, 'support_faq_sub')),
+            _buildSettingsItem(Icons.description_outlined, TranslationService.t(context, 'dpdp_consent'), TranslationService.t(context, 'view_legal_terms')),
+          ]),
+          const SizedBox(height: 32),
+
+          // Logout Button
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () async {
+                // Show confirmation dialog
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text(
+                      'Sign Out?',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    content: const Text(
+                      'You will need to verify your phone number again to log back in.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text(
+                          'Sign Out',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && mounted) {
+                  // Clear JWT from memory + disk
+                  ApiService.clearToken();
+                  // Navigate to onboarding (full screen replacement, clears nav stack)
+                  Navigator.of(context).pushAndRemoveUntil(
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 500),
+                      pageBuilder: (context, animation, _) => const OnboardingScreen(),
+                      transitionsBuilder: (context, animation, _, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                    ),
+                    (route) => false,
+                  );
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.accentRed,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFFFECACA)),
+                ),
+                backgroundColor: const Color(0xFFFEF2F2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.logout_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    TranslationService.t(context, 'logout'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageSwitcher(BuildContext context, SwasthyaTapProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                TranslationService.t(context, 'switch_language'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('English', style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: provider.selectedLanguage == 'English' ? const Icon(Icons.check, color: AppTheme.accentTeal) : null,
+                onTap: () {
+                  provider.setSelectedLanguage('English');
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                title: const Text('हिन्दी (Hindi)', style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: provider.selectedLanguage == 'Hindi' ? const Icon(Icons.check, color: AppTheme.accentTeal) : null,
+                onTap: () {
+                  provider.setSelectedLanguage('Hindi');
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingsGroup(String title, List<Widget> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.textSecondary, letterSpacing: 0.8),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: Column(
+            children: List.generate(items.length, (index) {
+              if (index == items.length - 1) return items[index];
+              return Column(
+                children: [
+                  items[index],
+                  const Divider(height: 1, indent: 50),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsItem(IconData icon, String title, String subtitle, {IconData? trailingIcon, VoidCallback? onTap}) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.accentTeal.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppTheme.accentTeal, size: 18),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+      ),
+      trailing: Icon(trailingIcon ?? Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 16),
+      onTap: onTap ?? () {},
+    );
+  }
+
+  // ─── Bottom Navigation Bar ───────────────────────────────────────────────
+  Widget _buildBottomNavigationBar(SwasthyaTapProvider provider) {
+    final tabs = [
+      {'icon': Icons.home_filled, 'label': _t('nav_home', provider.selectedLanguage)},
+      {'icon': Icons.qr_code_scanner_rounded, 'label': _t('nav_scan', provider.selectedLanguage)},
+      {'icon': Icons.person_rounded, 'label': _t('nav_profile', provider.selectedLanguage)},
+      {'icon': Icons.school_rounded, 'label': _t('nav_learn', provider.selectedLanguage)},
+      {'icon': Icons.more_horiz_rounded, 'label': _t('nav_more', provider.selectedLanguage)},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      height: 74,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(tabs.length, (index) {
+            final tab = tabs[index];
+            final isSelected = _currentIndex == index;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => _onTabSelected(index),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Active indicator/pill and icon
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.accentTeal.withOpacity(0.12) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        tab['icon'] as IconData,
+                        color: isSelected ? AppTheme.accentTeal : AppTheme.textSecondary.withOpacity(0.7),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Text(
+                        tab['label'] as String,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected ? AppTheme.accentTeal : AppTheme.textSecondary.withOpacity(0.8),
+                          letterSpacing: -0.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Custom Viewfinder Corners Painter ──────────────────────────────────────────
+class ScannerFramePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2DD4BF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+    
+    final radius = 24.0;
+    final lineLength = 32.0;
+    
+    // Top-left corner
+    final pathTopLeft = Path()
+      ..moveTo(0, lineLength)
+      ..lineTo(0, radius)
+      ..quadraticBezierTo(0, 0, radius, 0)
+      ..lineTo(lineLength, 0);
+    canvas.drawPath(pathTopLeft, paint);
+    
+    // Top-right corner
+    final pathTopRight = Path()
+      ..moveTo(size.width - lineLength, 0)
+      ..lineTo(size.width - radius, 0)
+      ..quadraticBezierTo(size.width, 0, size.width, radius)
+      ..lineTo(size.width, lineLength);
+    canvas.drawPath(pathTopRight, paint);
+    
+    // Bottom-left corner
+    final pathBottomLeft = Path()
+      ..moveTo(0, size.height - lineLength)
+      ..lineTo(0, size.height - radius)
+      ..quadraticBezierTo(0, size.height, radius, size.height)
+      ..lineTo(lineLength, size.height);
+    canvas.drawPath(pathBottomLeft, paint);
+    
+    // Bottom-right corner
+    final pathBottomRight = Path()
+      ..moveTo(size.width - lineLength, size.height)
+      ..lineTo(size.width - radius, size.height)
+      ..quadraticBezierTo(size.width, size.height, size.width, size.height - radius)
+      ..lineTo(size.width, size.height - lineLength);
+    canvas.drawPath(pathBottomRight, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ProfileSectionTile extends StatefulWidget {
+  final int number;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final Widget? trailing;
+  final Widget child;
+
+  const _ProfileSectionTile({
+    Key? key,
+    required this.number,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    this.trailing,
+    required this.child,
+  }) : super(key: key);
+
+  @override
+  State<_ProfileSectionTile> createState() => _ProfileSectionTileState();
+}
+
+class _ProfileSectionTileState extends State<_ProfileSectionTile> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header Row
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    // Icon container
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: widget.iconColor.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(widget.icon, color: widget.iconColor, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    // Title + Subtitle
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${widget.number}. ${widget.title}',
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.subtitle,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Trailing (Status/Buttons)
+                    if (widget.trailing != null) ...[
+                      widget.trailing!,
+                      const SizedBox(width: 8),
+                    ],
+                    // Expand arrow
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF64748B),
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Expanded Content
+          if (_isExpanded) ...[
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: const Color(0xFFFAFAFA),
+              child: widget.child,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// Custom Painter to draw a professional graduation cap logo with ECG heartbeat signal overlay
+class HealthEducationLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF0D9488)
+      ..style = PaintingStyle.fill;
+
+    // Draw diamond shape for graduation cap top
+    final pathCap = Path();
+    pathCap.moveTo(size.width * 0.5, size.height * 0.1);
+    pathCap.lineTo(size.width * 0.95, size.height * 0.35);
+    pathCap.lineTo(size.width * 0.5, size.height * 0.6);
+    pathCap.lineTo(size.width * 0.05, size.height * 0.35);
+    pathCap.close();
+    canvas.drawPath(pathCap, paint);
+
+    // Draw cap base bottom cap
+    final paintBase = Paint()
+      ..color = const Color(0xFF0B7A70)
+      ..style = PaintingStyle.fill;
+    final pathBase = Path();
+    pathBase.moveTo(size.width * 0.28, size.height * 0.48);
+    pathBase.lineTo(size.width * 0.28, size.height * 0.68);
+    pathBase.quadraticBezierTo(size.width * 0.5, size.height * 0.82, size.width * 0.72, size.height * 0.68);
+    pathBase.lineTo(size.width * 0.72, size.height * 0.48);
+    pathBase.quadraticBezierTo(size.width * 0.5, size.height * 0.62, size.width * 0.28, size.height * 0.48);
+    pathBase.close();
+    canvas.drawPath(pathBase, paintBase);
+
+    // Draw tassel hanging off the side
+    final paintTassel = Paint()
+      ..color = const Color(0xFF0F766E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(size.width * 0.95, size.height * 0.35), Offset(size.width * 0.97, size.height * 0.55), paintTassel);
+    
+    // Draw tassel end dot
+    final paintTasselDot = Paint()
+      ..color = const Color(0xFF0D9488)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size.width * 0.97, size.height * 0.58), 2.5, paintTasselDot);
+
+    // Draw ECG heart/plus overlay or details inside cap
+    final paintEcg = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final ecgPath = Path()
+      ..moveTo(size.width * 0.33, size.height * 0.35)
+      ..lineTo(size.width * 0.42, size.height * 0.35)
+      ..lineTo(size.width * 0.45, size.height * 0.25)
+      ..lineTo(size.width * 0.49, size.height * 0.45)
+      ..lineTo(size.width * 0.53, size.height * 0.20)
+      ..lineTo(size.width * 0.56, size.height * 0.38)
+      ..lineTo(size.width * 0.59, size.height * 0.35)
+      ..lineTo(size.width * 0.67, size.height * 0.35);
+
+    canvas.drawPath(ecgPath, paintEcg);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

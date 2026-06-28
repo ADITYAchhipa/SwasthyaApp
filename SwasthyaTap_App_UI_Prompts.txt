@@ -1,0 +1,669 @@
+
+================================================================================
+                    SWASTHYATAP.IN — MOBILE APP UI SCREEN PROMPTS
+                    India's NFC Emergency Health Identity Platform
+================================================================================
+                    Target: 140+ Crore Indians | 12+ Languages
+                    Aesthetic: Premium Healthcare + Trust + Simplicity
+                    Colors: Primary #0F766E (Teal), Accent #F59E0B (Amber), 
+                    Background #F8FAFC, Cards #FFFFFF, Emergency #DC2626
+                    Font: Inter (English) + Noto Sans (Indic Scripts)
+                    Style: Glassmorphism + Soft Shadows + Micro-animations
+================================================================================
+
+
+================================================================================
+SCREEN 1: SPLASH SCREEN
+================================================================================
+
+Prompt: Design a premium mobile app splash screen for "SwasthyaTap.in" — India's 
+NFC-based emergency health identity app. Center the SwasthyaTap logo (a stylized 
+heart with NFC waves emanating from it, in teal #0F766E). Below the logo, show 
+the tagline "One Tap Can Save Your Life" in clean Inter font. Background is a 
+subtle gradient from white to very light teal (#F0FDFA). Add a soft pulse 
+animation on the NFC wave icon. At the bottom, small text: "By Kadel Labs Pvt Ltd". 
+The splash should feel medical-grade trustworthy yet modern and warm. Include the 
+Indian tricolor as a thin accent line at the very top of the screen. Resolution: 
+1080x2400px, Android + iOS compatible safe areas.
+
+
+================================================================================
+SCREEN 2: ONBOARDING SCREEN 1 OF 3 — "Emergency Identity"
+================================================================================
+
+Prompt: Design onboarding screen 1/3 for SwasthyaTap health app. Top 60% shows a 
+3D isometric illustration of an NFC card being tapped against a smartphone, with 
+medical data (blood group, allergies) floating out as holographic cards in a 
+semi-circle. Use teal and amber color palette. The illustration should show an 
+Indian person (diverse representation) holding a phone near a card on an 
+unconscious person's wallet. Bottom 40% has: headline "Your Health Identity, 
+Always Accessible" in bold 24px, subtext "Any bystander can tap your card to 
+instantly see your blood group, allergies & alert your family. No app needed on 
+their phone." in 14px gray. Three dot indicators at bottom (first dot active/teal). 
+"Skip" button top-right corner, "Next" button bottom-right (teal pill button with 
+arrow). Swipe gesture indicator. Clean white background with subtle medical cross 
+pattern watermark.
+
+
+================================================================================
+SCREEN 3: ONBOARDING SCREEN 2 OF 3 — "Blood Donor Network"
+================================================================================
+
+Prompt: Design onboarding screen 2/3 for SwasthyaTap. Top 60% shows a 3D 
+isometric illustration of a map of India with glowing dots representing blood 
+donors, connected by animated pulse lines to a hospital icon in the center. Blood 
+drop icons (different colors for blood groups) float around. A phone shows an SMS 
+notification: "B+ needed at City Hospital (2km). Reply 1 to help." Bottom 40%: 
+headline "Real-Time Blood Donor Network" in bold, subtext "Hospital needs blood → 
+We ping matching donors within 5km via SMS → Donor confirms → Blood reaches in 
+15 minutes. No app needed for donors." Dot indicators (second active). Skip 
+top-right, Next bottom-right, Back bottom-left. Warm amber accent on the blood 
+network illustration. White background.
+
+
+================================================================================
+SCREEN 4: ONBOARDING SCREEN 3 OF 3 — "Works Offline, Everywhere"
+================================================================================
+
+Prompt: Design onboarding screen 3/3 for SwasthyaTap. Top 60% shows a 3D 
+illustration split into 3 mini-scenes: (1) A rural Indian setting with no network 
+bars but card still being tapped successfully, (2) A hospital ER with doctor 
+reading card data on tablet, (3) A family getting SMS alert with a location pin. 
+All connected by a flowing teal ribbon. Show "No Internet", "No App", "<1 Second" 
+badges floating. Bottom 40%: headline "Works When You Can't Speak" in bold, 
+subtext "Critical data stored directly on card chip. Works offline, in any 
+language, in under 1 second. Supports 12+ Indian languages." Dot indicators 
+(third active). "Get Started" large teal button spanning full width at bottom 
+with subtle glow animation. White background.
+
+
+================================================================================
+SCREEN 5: ROLE SELECTION SCREEN
+================================================================================
+
+Prompt: Design a role selection screen for SwasthyaTap app. After onboarding, 
+user sees two large interactive cards side by side (or stacked on smaller screens):
+
+CARD 1 — "I am a Citizen" : Shows an illustration of a person holding an NFC 
+health card, with a family silhouette behind them. Card has soft teal gradient 
+background, rounded corners (16px), subtle drop shadow. Icon: person with health 
+shield. Subtext: "Manage your health identity, emergency contacts & donate blood"
+
+CARD 2 — "Government Hospital" : Shows an illustration of a hospital building 
+with a government emblem, stethoscope, and NFC reader. Card has soft blue gradient 
+(#1E40AF to #3B82F6) background. Icon: hospital building with gov seal. Subtext: 
+"Scan patient cards, manage blood requests & access health records"
+
+Both cards have a subtle hover/press animation (scale up 1.02x + shadow increase). 
+Header text: "How would you like to use SwasthyaTap?" in 20px bold. SwasthyaTap 
+logo small at top. Language selector (globe icon + current language) at top-right 
+corner. Background: very light gray #F8FAFC with subtle dot pattern.
+
+
+================================================================================
+SCREEN 6: LANGUAGE SELECTION SCREEN
+================================================================================
+
+Prompt: Design a language selection screen for SwasthyaTap app supporting 12+ 
+Indian languages. Show a grid (3 columns, 4+ rows) of language option chips/cards. 
+Each chip shows: language name in that script + English name below in small text. 
+Languages: Hindi (हिन्दी), English, Tamil (தமிழ்), Telugu (తెలుగు), Bengali (বাংলা), 
+Marathi (मराठी), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ), Malayalam (മലയാളം), 
+Odia (ଓଡ଼ିଆ), Punjabi (ਪੰਜਾਬੀ), Urdu (اردو), Assamese (অসমীয়া). 
+Selected language has teal border + checkmark + light teal fill. Header: "Choose 
+Your Language" with a translate icon. Subtext: "You can change this anytime in 
+settings." Confirm button at bottom. Clean white background. Each chip is 
+pressable with subtle animation.
+
+
+================================================================================
+SCREEN 7: USER REGISTRATION / LOGIN SCREEN
+================================================================================
+
+Prompt: Design a clean login/registration screen for SwasthyaTap citizen user. 
+Top section: SwasthyaTap logo + "Welcome to SwasthyaTap" heading. Below: a phone 
+number input field with Indian flag (+91) prefix, styled with teal border on 
+focus. Below that: "Send OTP" large teal button. After OTP sent, show 4-digit 
+OTP input boxes with auto-focus animation. Timer showing "Resend OTP in 0:30". 
+"Verify" button. At bottom: "By continuing, you agree to our Terms of Service 
+and Privacy Policy" with links. Background: white with subtle medical pattern. 
+Add trust badges: "DPDP Compliant", "Data stays in India", "256-bit Encrypted" 
+as small icons at bottom. No password needed — OTP only for simplicity. Include 
+option "Login with ABHA ID" as secondary link.
+
+
+================================================================================
+SCREEN 8: GOVERNMENT HOSPITAL LOGIN SCREEN
+================================================================================
+
+Prompt: Design a government hospital login screen for SwasthyaTap. Professional 
+and authoritative feel. Top: Government of India emblem (small) + SwasthyaTap 
+Hospital logo variant (teal + blue). Fields: Hospital Registration ID input, 
+Authorized Personnel ID input, Phone number + OTP verification. "Verify Hospital" 
+button in blue (#1E40AF). Show trust indicators: "Verified by NHA", "ABDM 
+Integrated", "HIPAA + DPDP Compliant". Background: light blue-gray gradient. 
+Add a note: "Only registered government hospitals can access patient data via 
+NFC scan." Include "Contact Admin" link and help icon. Professional medical-grade 
+UI without playful elements.
+
+
+================================================================================
+SCREEN 9: HOME SCREEN — CITIZEN USER (MAIN DASHBOARD)
+================================================================================
+
+Prompt: Design the main home/dashboard screen for SwasthyaTap citizen app. Layout:
+
+TOP BAR: User name + greeting ("Good Morning, Rajesh"), profile avatar (circle) 
+on left, notification bell + settings gear on right. Below: emergency banner 
+(red gradient card): "In Emergency, anyone can tap your card" with NFC animation 
+icon.
+
+QUICK ACTIONS (horizontal scroll, icon cards):
+1. 📱 "Tap NFC" (teal) — primary action
+2. 📷 "Scan QR" (amber)  
+3. 🩸 "Blood Network" (red)
+4. 🏥 "Nearby Centers" (blue)
+5. 🆘 "Emergency Alert" (red pulse)
+
+MAIN CARDS (vertical scroll):
+- "My Health Card" — shows a 3D mini preview of their NFC card with blood group 
+  badge, tap to view full card details
+- "Health Profile" — completion percentage ring (e.g., 75%), "Complete your 
+  profile" CTA
+- "Educational Videos" — horizontal carousel thumbnails
+- "Report Health Issue" — icon of clipboard with warning, "Report Dengue/Malaria/
+  Virus symptoms"
+- "Blood Donation" — "Register as donor" or status if registered
+
+BOTTOM NAV BAR (5 items): Home (active), Scan, Health Profile, Learn, More
+
+Style: Clean cards with shadows, rounded corners, micro-interactions on tap. 
+White background, teal accents. Bottom nav is frosted glass effect.
+
+
+================================================================================
+SCREEN 10: NFC TAP / SCAN SCREEN
+================================================================================
+
+Prompt: Design the NFC tap screen for SwasthyaTap app. Full-screen view when user 
+opens NFC scanner. Center: large animated NFC icon with concentric ripple waves 
+(teal color pulsing outward). Text below: "Hold card near top of phone" in 18px. 
+Subtext: "Keep card within 2-4 cm for 1-2 seconds". Show a semi-transparent 
+phone outline indicating where NFC antenna typically is (top back of phone). 
+Status indicator: "Searching for card..." with subtle loading dots. When card 
+detected: screen flashes green briefly, haptic feedback indicator, then smoothly 
+transitions to card details view. At bottom: "Or scan QR code instead" link. 
+Background: dark teal gradient (#0F766E to #134E4A) for contrast. Cancel/back 
+button top-left (X icon, white).
+
+
+================================================================================
+SCREEN 11: NFC CARD DETAILS VIEW (AFTER SUCCESSFUL TAP)
+================================================================================
+
+Prompt: Design the card details screen shown after successful NFC tap in 
+SwasthyaTap. This is the critical emergency information display. Layout:
+
+TOP BANNER: Green success bar "Card Read Successfully ✓" with timestamp.
+
+PATIENT INFO CARD (hero section, large):
+- Photo (circle, 80px) + Full Name (large, bold) + Age/Gender
+- BLOOD GROUP: displayed as a large bold badge (e.g., "B+" in red circle, 64px)
+- Critical Allergies: listed with red warning icons (⚠️ Penicillin, ⚠️ Sulfa)
+
+SECTIONS (expandable cards):
+1. "Active Medications" — pill icons + drug name + dosage + frequency
+2. "Medical Conditions" — list with severity indicators (red/amber/green dots)
+3. "Emergency Contacts" — name + relation + CALL button (green phone icon)
+4. "Insurance" — PMJAY/scheme badge + ID number
+5. "ABHA ID" — linked badge
+
+ACTION BUTTONS (bottom sticky):
+- "🚨 Alert Family" (large, red, prominent) — sends SMS+GPS
+- "📞 Call 108" (blue)
+- "📋 Share with Hospital" (teal)
+
+Design must be scannable in 3 seconds — largest font for blood group and 
+allergies. Use color-coding for severity. White background, clear hierarchy. 
+Accessible font sizes (minimum 14px body, 24px blood group).
+
+
+================================================================================
+SCREEN 12: QR CODE SCANNER SCREEN
+================================================================================
+
+Prompt: Design the QR code scanner screen for SwasthyaTap. Full-screen camera 
+view with a stylized scanning frame overlay (rounded square corners in teal, 
+animated scanning line moving top to bottom). Text overlay at top: "Scan 
+SwasthyaTap QR Code" in white with dark backdrop. Corner guides are animated 
+(subtle pulse). Below the scan frame: "Align QR code within the frame" in white 
+text. Bottom section has: flashlight toggle button (torch icon), gallery import 
+button (to scan from saved image). If QR detected: frame turns green, shows 
+"Reading..." then transitions to same card details view as NFC (Screen 11). 
+Background: camera viewfinder (dark). Top-left: back arrow (white). 
+Professional camera UI, not playful.
+
+
+================================================================================
+SCREEN 13: HEALTH PROFILE SCREEN (USER'S OWN DATA)
+================================================================================
+
+Prompt: Design the comprehensive health profile screen for SwasthyaTap citizen 
+user. This is their complete health record manager. Layout:
+
+HEADER: Profile photo (editable, camera icon overlay) + Name + UID badge + 
+"Profile 78% Complete" progress ring.
+
+SECTIONS (scrollable, each is an expandable card):
+
+1. "Personal Information" — Name, DOB, Gender, Phone, ABHA ID, Aadhaar (last 4)
+2. "Blood Group" — Large badge display + "Verified ✓" or "Verify at nearest PHC"
+3. "Allergies" — List with add (+) button, severity color coding
+4. "Current Medications" — Drug cards with name, dose, frequency, time reminders
+5. "Medical Conditions" — Active/past toggle, condition + diagnosed date
+6. "Emergency Contacts" — 2 contacts with edit, priority ordering
+7. "Vaccination Records" — Timeline view, CoWIN sync button
+8. "Insurance & Schemes" — PMJAY, eShram linkage cards
+9. "Medical Reports" — Upload section (photos/PDFs), organized by date
+10. "Organ Donation" — Consent status badge, register/revoke button
+11. "Privacy Settings" — Toggle what's public vs PIN-protected
+
+BOTTOM: "Download My Data" button + "Delete Account" (red, with confirmation).
+
+Style: Clean sections with thin dividers, edit icons on each section, teal 
+accents. Feels like a premium health app (1mg/Practo level polish). Each 
+section expandable/collapsible with smooth animation.
+
+
+================================================================================
+SCREEN 14: EDUCATIONAL VIDEOS SECTION
+================================================================================
+
+Prompt: Design an educational videos section for SwasthyaTap health app. Layout:
+
+TOP: "Health Education" header with a graduation cap + heart icon. Filter tabs 
+(horizontal scroll): "All", "Emergency", "Dengue/Malaria", "First Aid", 
+"Blood Donation", "Nutrition", "Mental Health", "Women's Health", "Child Care".
+
+VIDEO GRID (2-column or list view toggle):
+Each video card shows: thumbnail (16:9 ratio, rounded 12px), play button overlay, 
+duration badge (bottom-right), title (2 lines max, 14px bold), category tag 
+(colored chip), language indicator flag, views count.
+
+FEATURED CAROUSEL (top): Large cards for featured/trending health videos, 
+auto-scroll with dots.
+
+Videos are categorized and available in all 12+ supported languages (language 
+filter option). Include: "How to use SwasthyaTap card", "What to do in a road 
+accident", "Dengue prevention", "CPR basics", "Blood donation process", 
+"Recognizing stroke symptoms", "Malaria awareness".
+
+Style: Netflix/YouTube-inspired card layout but medical-themed. Clean white 
+background, video cards have subtle shadows. Offline indicator (downloaded 
+videos have green checkmark).
+
+
+================================================================================
+SCREEN 15: DISEASE REPORTING FORM (DENGUE/MALARIA/VIRUS)
+================================================================================
+
+Prompt: Design a health issue reporting form screen for SwasthyaTap. Purpose: 
+citizens report suspected dengue, malaria, or virus outbreaks to local health 
+authorities. Layout:
+
+HEADER: "Report Health Concern" with warning triangle icon (amber). Subtext: 
+"Help your community stay safe. Reports are anonymous unless you opt-in."
+
+FORM FIELDS (step wizard, 3 steps):
+
+STEP 1 — Condition:
+- "What are you reporting?" — Chips: Dengue, Malaria, COVID-19, Chikungunya, 
+  Typhoid, Cholera, Unknown Fever, Other (text input)
+- "Reporting for?" — Self / Family Member / Community Observation
+
+STEP 2 — Symptoms:
+- Multi-select symptom chips: High Fever, Body Pain, Headache, Rash, Vomiting, 
+  Bleeding, Breathlessness, Cough, Diarrhea, Eye Pain, Joint Pain
+- "Duration" — dropdown: 1-2 days, 3-5 days, 1 week+, 2 weeks+
+- "Severity" — slider: Mild → Moderate → Severe
+- Photo upload (optional) — for rashes, breeding grounds
+
+STEP 3 — Location & Submit:
+- GPS auto-capture + map pin (editable)
+- "Nearest PHC" auto-suggested
+- "Additional notes" text area
+- Anonymous toggle (default ON)
+- Submit button (amber/orange)
+
+SUCCESS STATE: "Thank you! Your report helps protect your community. Local PHC 
+has been notified." with checkmark animation.
+
+Style: Clean form UI with step progress bar at top, teal steps. Each field has 
+clear labels in selected language. Large tap targets for mobile. Medical clipboard 
+aesthetic.
+
+
+================================================================================
+SCREEN 16: BLOOD DONATION REGISTRATION & NETWORK
+================================================================================
+
+Prompt: Design the blood donation section for SwasthyaTap with two tabs:
+
+TAB 1 — "Register as Donor":
+- Hero illustration: blood drop + heart + "Save Lives" 
+- Form: Blood group selector (visual grid of A+, A-, B+, B-, AB+, AB-, O+, O-), 
+  Availability toggle (green = available), Radius slider (1km to 15km), 
+  Last donation date, "I'm willing to donate" checkbox.
+- "Register" teal button.
+- After registration: Donor badge displayed + "Life Credits: 0" gamification card
+- Stats: "You could save X lives per year"
+
+TAB 2 — "Blood Centers Near Me":
+- Map view (Google Maps/Mapbox) showing blood banks as red pin markers
+- List view toggle below map
+- Each center card: Name, Distance (km), Blood groups available (colored dots), 
+  Open/Closed status, Phone (call button), Directions (navigate button)
+- Filter: by blood group needed, by distance, open now
+- "Request Emergency Blood" red button at bottom (creates urgent blood request)
+
+TAB 3 — "My Donations" (history):
+- Timeline of past donations with date, center, blood group, life credits earned
+- Achievement badges: "First Donation", "5 Lives Saved", "Rare Blood Hero"
+
+Style: Red accent for blood-related elements, gamification elements with badges 
+and progress. Map is full-bleed. Cards are clean with actionable buttons.
+
+
+================================================================================
+SCREEN 17: NEARBY HEALTH CENTERS / HOSPITALS
+================================================================================
+
+Prompt: Design a "Nearby Health Centers" screen for SwasthyaTap. Full map view 
+(top 60%) with bottom sheet (draggable, 40%). Map shows:
+- Blue pins: Government hospitals
+- Green pins: PHCs (Primary Health Centers)  
+- Red pins: Blood banks
+- Amber pins: Pharmacies
+
+Bottom sheet (draggable up to full screen): List of facilities sorted by distance.
+Each card: Hospital/PHC name, type badge, distance, rating stars, "Open Now" 
+green badge or "Closed" red, Services available (icons: emergency, blood bank, 
+NFC card programming), Call button, Directions button.
+
+Filter bar (horizontal scroll): All, Hospitals, PHC, Blood Banks, Emergency, 
+"Programs NFC Cards" (for card distribution points).
+
+Search bar at top of map with auto-complete.
+
+Style: Google Maps-inspired but with medical-themed pins. Clean white bottom 
+sheet with rounded top corners. Smooth drag interaction.
+
+
+================================================================================
+SCREEN 18: 3D CARD VIEWER & CUSTOMIZATION
+================================================================================
+
+Prompt: Design a 3D interactive card viewer screen for SwasthyaTap. Center of 
+screen shows a photorealistic 3D rendering of the user's NFC health card that 
+can be rotated by touch/drag (360° on Y-axis, slight tilt on X). Card shows:
+
+FRONT: SwasthyaTap branding, user's name, blood group badge, QR code, NFC symbol, 
+photo placeholder, card UID.
+
+BACK: Emergency instructions in Hindi + English, emergency contacts, "Tap with 
+any phone" instruction, SwasthyaTap.in URL.
+
+Below the 3D card:
+- "Customize Card" button — opens design options:
+  - Card variant: Standard (white), Worker (orange), Senior (large text), 
+    Child (colorful), Premium (dark/metallic)
+  - Language on card: dropdown
+  - Add/remove optional fields
+- "Print Card" button (amber) — generates print-ready PDF
+- "Order Physical Card" button (teal) — opens ordering flow (free/premium options)
+- "Share Card Preview" — generates shareable image
+
+The 3D card should have realistic shadows, slight reflection, and smooth rotation 
+with momentum. Background: subtle gradient. Feels premium and interactive.
+
+
+================================================================================
+SCREEN 19: CARD PRINTING / ORDERING SCREEN
+================================================================================
+
+Prompt: Design a card ordering/printing screen for SwasthyaTap. Two options:
+
+OPTION 1 — "Print at Home" (Free):
+- Generates a high-res PDF of card design (front + back)
+- Preview thumbnail
+- "Download PDF" button
+- Instructions: "Print on thick paper (300gsm), laminate for durability. Note: 
+  This will NOT have NFC chip — only QR code will work."
+
+OPTION 2 — "Order NFC Card" (₹0-499):
+- Card type selector (visual cards):
+  - Free Basic PVC (₹0, limited stock) — standard white
+  - Standard PVC (₹99) — custom color
+  - Wristband (₹299) — for workers/children
+  - Premium Metal (₹499) — stainless steel, laser engraved
+- Delivery address form
+- Expected delivery: 5-7 days
+- Payment integration placeholder
+- "Your card will be pre-programmed with your health data"
+
+Order tracking section below (if order exists): status stepper (Ordered → 
+Programmed → Shipped → Delivered).
+
+Style: E-commerce-like clean product cards with pricing. Teal for free, amber 
+for premium highlights.
+
+
+================================================================================
+SCREEN 20: SETTINGS & MORE SCREEN
+================================================================================
+
+Prompt: Design the settings/more screen for SwasthyaTap. Clean list-based layout:
+
+SECTIONS:
+1. "Account" — Profile photo + name + phone + UID badge, Edit button
+2. "Privacy & Security" — PIN management, Privacy tier settings, Access log 
+   ("Who tapped my card"), Biometric lock toggle
+3. "Language" — Current language display + change button
+4. "Notifications" — Toggle: Emergency alerts, Blood requests, Health tips, 
+   App updates
+5. "My Cards" — List of linked NFC cards, add new, deactivate old
+6. "Family Members" — Add family profiles managed under one account
+7. "Health Data" — Export all data (JSON/PDF), Delete account
+8. "Help & Support" — FAQs, Contact us, Report a bug
+9. "Legal" — Privacy Policy, Terms, DPDP rights, Consent management
+10. "About" — App version, Founders, "Made with ♥ for 140 Cr Indians"
+
+Style: iOS Settings-inspired grouped list. Each row has icon (teal) + label + 
+chevron or toggle. Section headers in gray. Clean, no clutter.
+
+
+================================================================================
+SCREEN 21: HOSPITAL DASHBOARD (GOVERNMENT HOSPITAL USER)
+================================================================================
+
+Prompt: Design the hospital staff dashboard for SwasthyaTap Government Hospital 
+user. Professional, clinical UI. Layout:
+
+TOP BAR: Hospital name + verified badge, staff name, logout.
+
+STATS CARDS (horizontal scroll): 
+- "Patients Scanned Today" (number + trend arrow)
+- "Blood Requests Active" (number, red if urgent)
+- "Alerts Received" (number)
+- "Avg Scan Time" (seconds)
+
+QUICK ACTIONS (grid, 2x2):
+1. "Scan Patient NFC" — large teal button with NFC icon
+2. "Scan QR Code" — amber with QR icon
+3. "Create Blood Request" — red with blood drop
+4. "Patient Lookup" — blue with search icon
+
+RECENT SCANS (list): Last 10 patients scanned — shows name, blood group badge, 
+time, "View Details" button.
+
+ACTIVE BLOOD REQUESTS (card): Blood group needed, units, responses received, 
+time elapsed, "Close Request" button.
+
+BOTTOM NAV: Dashboard, Scan, Blood Network, Patients, Settings.
+
+Style: Clinical/professional. Blue (#1E40AF) primary for hospital variant. 
+Data-dense but organized. No playful elements — this is a medical tool.
+
+
+================================================================================
+SCREEN 22: EMERGENCY ALERT TRIGGERED SCREEN
+================================================================================
+
+Prompt: Design the emergency alert confirmation screen for SwasthyaTap. Shown 
+after bystander presses "Alert Family" on a scanned card. 
+
+TOP: Large animated checkmark in green circle with confetti-like particles.
+Header: "Emergency Contacts Alerted! ✓" in bold 24px.
+
+INFO CARD:
+- "SMS sent to 2 contacts with your GPS location"
+- Map thumbnail showing current location pin
+- Contacts notified: list with names + delivery status (✓ Delivered / ⏳ Pending)
+
+NEXT STEPS (numbered list with icons):
+1. "Stay with the person if safe to do so"
+2. "Call 108 for ambulance" — with tap-to-call button
+3. "Nearest hospital: [Name] — 1.2 km" — with directions button
+4. "Note the location for medical team"
+
+TIMER: "Alert sent 00:32 ago" (live updating)
+
+Bottom: "Done" button to return to scan screen.
+
+Style: Calm, reassuring green/teal tones. Clear actionable steps. Large text 
+for readability in stressful situations. No clutter.
+
+
+================================================================================
+SCREEN 23: NOTIFICATIONS / ACCESS LOG SCREEN
+================================================================================
+
+Prompt: Design a notifications and access log screen for SwasthyaTap user. 
+Two tabs:
+
+TAB 1 — "Notifications": 
+Chronological list of notifications — each with icon, title, body, timestamp.
+Types: "Your card was tapped at [location]", "Blood request near you", 
+"Profile update reminder", "New health tip available".
+Unread have teal left border. Read are gray.
+
+TAB 2 — "Card Access Log" (Who tapped my card):
+Timeline view showing every tap event:
+- Date/time
+- Approximate location (city/area)
+- Alert sent? (yes/no badge)
+- IP masked
+Each entry is a card with map thumbnail.
+
+"Export Log" button at bottom. "Clear All" option.
+
+Style: Timeline with connected dots on left side (vertical line). Clean cards. 
+Teal accent for activity indicators. Subtle animations on scroll.
+
+
+================================================================================
+SCREEN 24: OFFLINE MODE INDICATOR
+================================================================================
+
+Prompt: Design an offline mode banner/state for SwasthyaTap app. When device has 
+no internet:
+
+- Top banner: amber/yellow strip "You're Offline — Core features still work" 
+  with wifi-off icon.
+- NFC scanning: Shows green checkmark "NFC Scan works offline ✓"
+- QR scanning: Shows green checkmark "QR Scan works offline ✓" 
+- Profile view: Shows green "Cached data available ✓"
+- Blood network: Shows red X "Requires internet"
+- Emergency alert: Shows amber "SMS will be sent when online"
+
+Style: Non-intrusive top banner (collapsible). Features show availability with 
+traffic-light color coding. Reassures user that life-saving features work 
+regardless of connectivity.
+
+
+================================================================================
+SCREEN 25: ONBOARDING COMPLETE / CARD ACTIVATION SUCCESS
+================================================================================
+
+Prompt: Design a success/celebration screen shown when user completes profile 
+setup and their first NFC card is activated. Center: 3D card floating with glow 
+effect + sparkle particles animation. Large text: "You're Protected! 🎉" in 
+teal. Below: "Your SwasthyaTap card is now active. In any emergency, anyone can 
+tap your card to help you." Stats displayed: "Blood Group: B+ ✓", "Emergency 
+Contacts: 2 ✓", "Allergies: Listed ✓". 
+
+Share card: "Tell your family about SwasthyaTap" with WhatsApp/SMS share buttons.
+"Go to Dashboard" primary button.
+
+Style: Celebratory but not childish. Subtle particle animation. Trust-building 
+completion moment. Premium healthcare aesthetic.
+
+
+================================================================================
+                              DESIGN SYSTEM NOTES
+================================================================================
+
+TYPOGRAPHY:
+- Headlines: Inter Bold, 24-28px
+- Body: Inter Regular, 14-16px
+- Captions: Inter Medium, 12px
+- Indic scripts: Noto Sans [Language], matching weights
+
+SPACING:
+- Page padding: 16-24px
+- Card padding: 16px
+- Card border-radius: 12-16px
+- Between sections: 24px
+
+COLORS:
+- Primary: #0F766E (Teal 700)
+- Primary Light: #CCFBF1 (Teal 100)
+- Accent: #F59E0B (Amber 500)
+- Emergency: #DC2626 (Red 600)
+- Hospital Blue: #1E40AF
+- Background: #F8FAFC
+- Card: #FFFFFF
+- Text Primary: #1E293B
+- Text Secondary: #64748B
+- Success: #16A34A
+- Border: #E2E8F0
+
+ANIMATIONS:
+- Page transitions: slide + fade (300ms ease)
+- Card press: scale(0.98) + shadow reduce (150ms)
+- NFC pulse: radial ripple (1.5s loop)
+- Loading: skeleton shimmer
+- Success: checkmark draw + confetti burst
+
+ACCESSIBILITY:
+- Minimum touch target: 44x44px
+- Color contrast: WCAG 2.1 AA minimum
+- Screen reader labels on all interactive elements
+- Font scaling support (up to 200%)
+- RTL support for Urdu
+
+PLATFORMS:
+- React Native / Flutter (cross-platform)
+- iOS 14+ and Android 8+
+- Responsive: 320px to 428px width
+- Safe area support for notch/dynamic island
+
+================================================================================
+                              END OF PROMPTS
+================================================================================
+
+Generated for: SwasthyaTap.in by Kadel Labs Private Limited
+Founders: Aditya Chhipa (Tech Lead) & Harshit Borana (Product Lead)
+Date: June 2026
+Purpose: UI/UX Design Reference for Mobile App Development
+================================================================================
