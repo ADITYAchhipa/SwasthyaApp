@@ -454,7 +454,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Widget _buildCitizenCard(BuildContext context) {
     return _InteractiveRoleCard(
-      imageUrl: 'citizen_card.webp',
+      imageUrl: 'assets/citizen_card.webp',
       title: _t('citizen_title'),
       description: _t('citizen_desc'),
       onTap: () {
@@ -483,7 +483,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Widget _buildHospitalCard(BuildContext context) {
     return _InteractiveRoleCard(
-      imageUrl: 'hospital_card.webp',
+      imageUrl: 'assets/hospital_card.webp',
       title: _t('hospital_title'),
       description: _t('hospital_desc'),
       onTap: () {
@@ -563,7 +563,7 @@ class _InteractiveRoleCardState extends State<_InteractiveRoleCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isCitizen = widget.imageUrl == 'citizen_card.png';
+    final isCitizen = widget.imageUrl.contains('citizen_card');
     final primaryColor = isCitizen ? const Color(0xFF0F766E) : const Color(0xFF1E40AF);
 
     return GestureDetector(
@@ -628,23 +628,10 @@ class _InteractiveRoleCardState extends State<_InteractiveRoleCard> {
                           flex: 4,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Image.network(
+                            child: Image.asset(
                               widget.imageUrl,
                               fit: BoxFit.contain,
                               width: double.infinity,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black12),
-                                    ),
-                                  ),
-                                );
-                              },
                               errorBuilder: (context, error, stackTrace) {
                                 return Icon(
                                   isCitizen ? Icons.people_outline_rounded : Icons.local_hospital_rounded,

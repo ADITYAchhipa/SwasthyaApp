@@ -1094,8 +1094,8 @@ class OnboardingBloodNetworkWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Image.network(
-        'india_map_cropped.webp',
+      child: Image.asset(
+        'assets/india_map_cropped.webp',
         fit: BoxFit.contain,
       ),
     );
