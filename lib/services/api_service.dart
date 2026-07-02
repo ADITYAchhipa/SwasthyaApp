@@ -444,6 +444,9 @@ class ApiService {
     double? lng,
     String? locationDescription,
     String additionalNotes = '',
+    String reportingFor = 'self',
+    String duration = '',
+    bool submitAnonymously = false,
   }) async {
     try {
       final response = await http
@@ -458,6 +461,9 @@ class ApiService {
               'lng': lng,
               'locationDescription': locationDescription,
               'additionalNotes': additionalNotes,
+              'reportingFor': reportingFor,
+              'duration': duration,
+              'submitAnonymously': submitAnonymously,
             }),
           )
           .timeout(const Duration(seconds: 10));
@@ -466,6 +472,24 @@ class ApiService {
     } catch (e) {
       debugPrint('submitHealthReport error: $e');
       return false;
+    }
+  }
+
+  /// Get previously submitted health reports.
+  static Future<List<dynamic>> getHealthReports() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/health-reports'), headers: _headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return body['reports'] as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getHealthReports error: $e');
+      return [];
     }
   }
 
@@ -507,6 +531,7 @@ class ApiService {
       homeLng: (json['homeLng'] as num?)?.toDouble() ?? 77.5946,
       phoneNumber: json['phoneNumber'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      profileImage: json['profileImage'] as String?,
     );
   }
 
@@ -579,5 +604,6 @@ class ApiService {
         'lifeCredits': 350,
         'selectedLanguage': 'English',
         'profileCompleteness': 75,
+        'profileImage': null,
       };
 }

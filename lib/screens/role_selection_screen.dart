@@ -20,8 +20,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     {"name": "English", "native": "English"},
     {"name": "Hindi", "native": "हिंदी"},
     {"name": "Bengali", "native": "বাংলা"},
-    {"name": "Tamil", "native": "தமிழ்"},
     {"name": "Telugu", "native": "తెలుగు"},
+    {"name": "Tamil", "native": "தமிழ்"},
+    {"name": "Marathi", "native": "मराठी"},
+    {"name": "Gujarati", "native": "ગુજરાતી"},
+    {"name": "Kannada", "native": "ಕನ್ನಡ"},
+    {"name": "Malayalam", "native": "മലയാളം"},
+    {"name": "Punjabi", "native": "ਪੰਜਾਬੀ"},
+    {"name": "Odia", "native": "ଓଡ଼ିଆ"},
+    {"name": "Urdu", "native": "اردو"},
   ];
 
   static const Map<String, Map<String, String>> _localizations = {
@@ -447,7 +454,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Widget _buildCitizenCard(BuildContext context) {
     return _InteractiveRoleCard(
-      imageUrl: 'citizen_card.png',
+      imageUrl: 'citizen_card.webp',
       title: _t('citizen_title'),
       description: _t('citizen_desc'),
       onTap: () {
@@ -476,7 +483,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Widget _buildHospitalCard(BuildContext context) {
     return _InteractiveRoleCard(
-      imageUrl: 'hospital_card.png',
+      imageUrl: 'hospital_card.webp',
       title: _t('hospital_title'),
       description: _t('hospital_desc'),
       onTap: () {
@@ -513,6 +520,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return "மொழி தமிழில் அமைக்கப்பட்டுள்ளது";
       case "Telugu":
         return "భాష తెలుగులో సెట్ చేయబడింది";
+      case "Marathi":
+        return "भाषा मराठीमध्ये सेट केली आहे";
+      case "Gujarati":
+        return "ભાષા ગુજરાતીમાં સેટ કરેલી છે";
+      case "Kannada":
+        return "ಭಾಷೆಯನ್ನು ಕನ್ನಡಕ್ಕೆ ಹೊಂದಿಸಲಾಗಿದೆ";
+      case "Malayalam":
+        return "ഭാഷ മലയാളത്തിലേക്ക് സജ്ജമാക്കി";
+      case "Punjabi":
+        return "ਭਾਸ਼ਾ ਪੰਜਾਬੀ ਵਿੱਚ ਸੈੱਟ ਕੀਤੀ ਗਈ ਹੈ";
+      case "Odia":
+        return "ଭାଷା ଓଡ଼ିଆରେ ସେଟ୍ ହୋଇଛି";
+      case "Urdu":
+        return "زبان اردو میں سیٹ کی گئی ہے";
       default:
         return "Language set to English";
     }

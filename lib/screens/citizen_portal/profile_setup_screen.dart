@@ -34,12 +34,32 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.citizen.fullName);
-    _ageController = TextEditingController(text: widget.citizen.age?.toString() ?? '');
-    _addressController = TextEditingController(text: widget.citizen.address);
-    _phoneController = TextEditingController(text: widget.citizen.phoneNumber);
+    // Check if it's a mock user or default new user to avoid prefilling with dummy data
+    final isMockOrNew = widget.citizen.id == 'x7k9m2' || 
+                        widget.citizen.fullName == 'Rajesh Kumar' || 
+                        widget.citizen.fullName == 'SwasthyaTap User';
+
+    _nameController = TextEditingController(
+      text: isMockOrNew ? '' : widget.citizen.fullName,
+    );
     
-    if (widget.citizen.emergencyContacts.isNotEmpty) {
+    _ageController = TextEditingController(
+      text: (isMockOrNew || widget.citizen.age == null) 
+          ? '' 
+          : widget.citizen.age.toString(),
+    );
+    
+    _addressController = TextEditingController(
+      text: isMockOrNew ? '' : widget.citizen.address,
+    );
+    
+    _phoneController = TextEditingController(
+      text: (isMockOrNew && widget.citizen.phoneNumber == '9900112233') 
+          ? '' 
+          : widget.citizen.phoneNumber,
+    );
+    
+    if (widget.citizen.emergencyContacts.isNotEmpty && !isMockOrNew) {
       _emergencyNameController = TextEditingController(text: widget.citizen.emergencyContacts[0].name);
       _emergencyPhoneController = TextEditingController(text: widget.citizen.emergencyContacts[0].phone);
     } else {
@@ -47,8 +67,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _emergencyPhoneController = TextEditingController();
     }
 
-    // Default blood group if not valid
-    if (_bloodGroups.contains(widget.citizen.bloodGroup)) {
+    // Default blood group if not valid or if it is mock
+    if (!isMockOrNew && _bloodGroups.contains(widget.citizen.bloodGroup)) {
       _bloodGroup = widget.citizen.bloodGroup;
     } else {
       _bloodGroup = 'O+';
@@ -246,6 +266,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             children: [
                               TextFormField(
                                 controller: _nameController,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                autofillHints: const [],
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'full_name'),
                                   icon: Icons.person,
@@ -260,6 +283,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     child: TextFormField(
                                       controller: _ageController,
                                       keyboardType: TextInputType.number,
+                                      enableSuggestions: false,
+                                      autocorrect: false,
+                                      autofillHints: const [],
                                       decoration: AppTheme.premiumInputDecoration(
                                         label: TranslationService.t(context, 'label_age'),
                                         icon: Icons.calendar_today,
@@ -299,6 +325,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               TextFormField(
                                 controller: _phoneController,
                                 keyboardType: TextInputType.phone,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                autofillHints: const [],
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'phone_number'),
                                   icon: Icons.phone_android,
@@ -310,6 +339,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               TextFormField(
                                 controller: _addressController,
                                 maxLines: 2,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                autofillHints: const [],
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_address'),
                                   icon: Icons.home,
@@ -340,6 +372,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             children: [
                               TextFormField(
                                 controller: _emergencyNameController,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                autofillHints: const [],
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_emergency_name'),
                                   icon: Icons.contact_phone,
@@ -351,6 +386,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               TextFormField(
                                 controller: _emergencyPhoneController,
                                 keyboardType: TextInputType.phone,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                autofillHints: const [],
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_emergency_phone'),
                                   icon: Icons.phone,

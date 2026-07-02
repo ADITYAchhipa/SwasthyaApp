@@ -1,7 +1,10 @@
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 import '../../providers/swasthya_tap_provider.dart';
 import '../../models/models.dart';
 import '../../theme/app_theme.dart';
@@ -9,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../../utils/card_pdf_generator.dart';
 import '../../utils/pdf_downloader.dart';
 import 'order_card_screen.dart';
+import '../../utils/translation_service.dart';
 
 class CardViewerScreen extends StatefulWidget {
   const CardViewerScreen({Key? key}) : super(key: key);
@@ -36,6 +40,38 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
   bool _showEmergencyContacts = true;
   bool _showAllergies = false;
   bool _showMedicalConditions = false;
+
+  // PDF Caching State to bypass pop-up blockers
+  Uint8List? _cachedPdfBytes;
+  bool _isGenerating = false;
+  bool _needsRegeneration = true;
+
+  void _updateState(VoidCallback callback) {
+    setState(() {
+      callback();
+      _needsRegeneration = true;
+    });
+  }
+
+  Future<void> _pregeneratePdf(MedicalProfile citizen) async {
+    try {
+      final bytes = await generateCardPdfBytes(
+        citizen: citizen,
+        selectedVariant: _selectedVariant,
+        selectedLanguage: _selectedLanguage,
+        showBloodGroup: _showBloodGroup,
+        showEmergencyContacts: _showEmergencyContacts,
+        showAllergies: _showAllergies,
+        showMedicalConditions: _showMedicalConditions,
+      );
+      _cachedPdfBytes = bytes;
+      _needsRegeneration = false;
+      _isGenerating = false;
+    } catch (e) {
+      _isGenerating = false;
+      debugPrint('Error pre-generating PDF: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -78,6 +114,13 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final provider = Provider.of<SwasthyaTapProvider>(context);
     final citizen = provider.currentCitizen;
+
+    if (_needsRegeneration && !_isGenerating) {
+      _isGenerating = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _pregeneratePdf(citizen);
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -148,10 +191,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
               child: GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    _rotationY += details.delta.dx * 0.01;
-                    _rotationX -= details.delta.dy * 0.01;
-                    // Keep rotation X bounded to prevent complete upside down flip
-                    _rotationX = _rotationX.clamp(-0.4, 0.4);
+                    _rotationY -= details.delta.dx * 0.01;
                   });
                 },
                 onTap: _triggerFlip,
@@ -288,7 +328,10 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                   value: _selectedLanguage,
                   isExpanded: true,
                   icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F172A)),
-                  items: <String>['English', 'Hindi']
+                  items: <String>[
+                    'English', 'Hindi', 'Bengali', 'Telugu', 'Tamil', 'Marathi',
+                    'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Urdu'
+                  ]
                       .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
@@ -300,7 +343,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                   }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
-                      setState(() {
+                      _updateState(() {
                         _selectedLanguage = newValue;
                       });
                     }
@@ -325,10 +368,10 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildToggleChip('Blood Group', _showBloodGroup, (val) => setState(() => _showBloodGroup = val)),
-                _buildToggleChip('Emergency Contacts', _showEmergencyContacts, (val) => setState(() => _showEmergencyContacts = val)),
-                _buildToggleChip('Allergies', _showAllergies, (val) => setState(() => _showAllergies = val)),
-                _buildToggleChip('Medical Conditions', _showMedicalConditions, (val) => setState(() => _showMedicalConditions = val)),
+                _buildToggleChip('Blood Group', _showBloodGroup, (val) => _updateState(() => _showBloodGroup = val)),
+                _buildToggleChip('Emergency Contacts', _showEmergencyContacts, (val) => _updateState(() => _showEmergencyContacts = val)),
+                _buildToggleChip('Allergies', _showAllergies, (val) => _updateState(() => _showAllergies = val)),
+                _buildToggleChip('Medical Conditions', _showMedicalConditions, (val) => _updateState(() => _showMedicalConditions = val)),
               ],
             ),
             const SizedBox(height: 32),
@@ -358,6 +401,21 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
   }
 
   Future<void> _downloadCardPdf(MedicalProfile citizen) async {
+    final filename = 'SwasthTap_Card_${citizen.fullName.replaceAll(' ', '_')}.pdf';
+    
+    // If cached, trigger download instantly in the same event loop to bypass pop-up blockers
+    if (_cachedPdfBytes != null && !_needsRegeneration) {
+      downloadPdfFile(_cachedPdfBytes!, filename);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF downloaded successfully!'),
+          backgroundColor: Color(0xFF0D9488),
+        ),
+      );
+      return;
+    }
+
+    // Fallback if not pre-generated yet
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -407,7 +465,6 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
       if (!mounted) return;
       Navigator.pop(context);
 
-      final filename = 'SwasthTap_Card_${citizen.fullName.replaceAll(' ', '_')}.pdf';
       downloadPdfFile(pdfBytes, filename);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -429,60 +486,25 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
   }
 
   Future<void> _printCardPdf(MedicalProfile citizen) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Center(
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D9488)),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Preparing print document...',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
     try {
-      final pdfBytes = await generateCardPdfBytes(
-        citizen: citizen,
-        selectedVariant: _selectedVariant,
-        selectedLanguage: _selectedLanguage,
-        showBloodGroup: _showBloodGroup,
-        showEmergencyContacts: _showEmergencyContacts,
-        showAllergies: _showAllergies,
-        showMedicalConditions: _showMedicalConditions,
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async {
+          if (_cachedPdfBytes != null && !_needsRegeneration) {
+            return _cachedPdfBytes!;
+          }
+          return await generateCardPdfBytes(
+            citizen: citizen,
+            selectedVariant: _selectedVariant,
+            selectedLanguage: _selectedLanguage,
+            showBloodGroup: _showBloodGroup,
+            showEmergencyContacts: _showEmergencyContacts,
+            showAllergies: _showAllergies,
+            showMedicalConditions: _showMedicalConditions,
+          );
+        },
+        name: 'SwasthTap_Card_${citizen.fullName.replaceAll(' ', '_')}.pdf',
       );
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      final filename = 'SwasthTap_Card_${citizen.fullName.replaceAll(' ', '_')}.pdf';
-      printPdfFile(pdfBytes, filename);
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error printing PDF: $e'),
@@ -698,7 +720,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
 
     return GestureDetector(
       onTap: () {
-        setState(() {
+        _updateState(() {
           _selectedVariant = name;
         });
       },
@@ -915,6 +937,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                   width: 46,
                   height: 46,
                   fit: BoxFit.contain,
+                  gaplessPlayback: true,
                 ),
               ),
             ),
@@ -1018,7 +1041,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                             ),
                           ),
                           Text(
-                            _selectedLanguage == 'Hindi' ? 'आपकी स्वास्थ्य पहचान' : 'Your Health Identity',
+                            TranslationService.tLang(_selectedLanguage, 'card_tagline'),
                             style: GoogleFonts.inter(
                               fontSize: 6.0,
                               color: Colors.white.withOpacity(0.85),
@@ -1034,17 +1057,17 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'स्वस्थटैप आईडी' : 'SwasthTap ID', 'STP 1234 5678 9012', textColor),
-                      _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'नाम' : 'Name', citizen.fullName, textColor),
-                      _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'जन्म तिथि' : 'Date of Birth', '15/08/1990', textColor),
+                      _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'st_uid'), 'STP 1234 5678 9012', textColor),
+                      _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'full_name'), citizen.fullName, textColor),
+                      _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'dob'), '15/08/1990', textColor),
                       if (_showBloodGroup)
-                        _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'रक्त समूह' : 'Blood Group', citizen.bloodGroup, textColor),
+                        _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'blood_group'), citizen.bloodGroup, textColor),
                       if (_showEmergencyContacts && citizen.emergencyContacts.isNotEmpty)
-                        _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'आपातकालीन' : 'Emergency Contact', citizen.emergencyContacts[0].phone, textColor),
+                        _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'emergency_contacts'), citizen.emergencyContacts[0].phone, textColor),
                       if (_showAllergies)
-                        _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'एलर्जी' : 'Allergies', citizen.allergies.isNotEmpty ? citizen.allergies : 'None', textColor),
+                        _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'allergies'), citizen.allergies.isNotEmpty ? citizen.allergies : 'None', textColor),
                       if (_showMedicalConditions)
-                        _buildAlignedDetailRow(_selectedLanguage == 'Hindi' ? 'चिकित्सा स्थिति' : 'Conditions', citizen.specialInstructions.isNotEmpty ? citizen.specialInstructions : 'None', textColor),
+                        _buildAlignedDetailRow(TranslationService.tLang(_selectedLanguage, 'medical_conditions'), citizen.specialInstructions.isNotEmpty ? citizen.specialInstructions : 'None', textColor),
                     ],
                   ),
                   
@@ -1063,9 +1086,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            _selectedLanguage == 'Hindi' 
-                                ? 'प्रोफ़ाइल देखने के लिए फ़ोन पर कार्ड टैप करें'
-                                : 'Tap this card on NFC enabled phone to access health profile',
+                            TranslationService.tLang(_selectedLanguage, 'card_tap_desc'),
                             style: GoogleFonts.inter(
                               fontSize: 6.0,
                               fontWeight: FontWeight.w600,
@@ -1097,22 +1118,22 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                       const SizedBox(height: 2),
                       _buildFeatureRowBack(
                         Icons.security_rounded,
-                        _selectedLanguage == 'Hindi' ? 'सुरक्षित' : 'Secure',
-                        _selectedLanguage == 'Hindi' ? 'डेटा पूरी तरह एन्क्रिप्टेड है' : 'Your data is encrypted and protected',
+                        TranslationService.tLang(_selectedLanguage, 'card_secure_title'),
+                        TranslationService.tLang(_selectedLanguage, 'card_secure_desc'),
                         textColor,
                       ),
                       const SizedBox(height: 8),
                       _buildFeatureRowBack(
                         Icons.lock_outline_rounded,
-                        _selectedLanguage == 'Hindi' ? 'निजी' : 'Private',
-                        _selectedLanguage == 'Hindi' ? 'अनुमति-आधारित पहुंच' : 'Access your health data with your permission',
+                        TranslationService.tLang(_selectedLanguage, 'card_private_title'),
+                        TranslationService.tLang(_selectedLanguage, 'card_private_desc'),
                         textColor,
                       ),
                       const SizedBox(height: 8),
                       _buildFeatureRowBack(
                         Icons.add_box_outlined,
-                        _selectedLanguage == 'Hindi' ? 'पोर्टेबल' : 'Portable',
-                        _selectedLanguage == 'Hindi' ? 'ले जाने में आसान। एनएफसी सक्षम' : 'Easy to carry. Always with you.',
+                        TranslationService.tLang(_selectedLanguage, 'card_portable_title'),
+                        TranslationService.tLang(_selectedLanguage, 'card_portable_desc'),
                         textColor,
                       ),
                     ],
@@ -1129,7 +1150,7 @@ class _CardViewerScreenState extends State<CardViewerScreen> with SingleTickerPr
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _selectedLanguage == 'Hindi' ? 'सहायता चाहिए?' : 'Need Help?',
+                              TranslationService.tLang(_selectedLanguage, 'need_help'),
                               style: GoogleFonts.inter(fontSize: 7.5, fontWeight: FontWeight.bold, color: textColor),
                             ),
                             Text(

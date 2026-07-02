@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,8 @@ import 'nearby_health_centers_screen.dart';
 import 'card_viewer_screen.dart';
 import 'scanned_profile_screen.dart';
 import '../onboarding_screen.dart' hide HeartEcgPainter;
+import 'submit_report_screen.dart';
+import 'previous_reports_screen.dart';
 
 class CitizenDashboard extends StatefulWidget {
   const CitizenDashboard({Key? key}) : super(key: key);
@@ -396,20 +399,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(25),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=150&h=150&q=80',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: AppTheme.accentTeal,
-                  alignment: Alignment.center,
-                  child: Text(
-                    citizen.fullName.substring(0, 2).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                );
-              },
-            ),
+            child: _buildAvatarImage(citizen, fontSize: 16),
           ),
         ),
         const SizedBox(width: 14),
@@ -570,27 +560,9 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _t('quick_actions', provider.selectedLanguage),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            GestureDetector(
-              onTap: () {},
-              child: Row(
-                children: [
-                  Text(
-                    _t('see_all', provider.selectedLanguage),
-                    style: const TextStyle(color: AppTheme.accentTeal, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.chevron_right, size: 16, color: AppTheme.accentTeal),
-                ],
-              ),
-            ),
-          ],
+        Text(
+          _t('quick_actions', provider.selectedLanguage),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -839,116 +811,106 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        // Dots indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.accentTeal, shape: BoxShape.circle)),
-            const SizedBox(width: 4),
-            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.borderColor, shape: BoxShape.circle)),
-            const SizedBox(width: 4),
-            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.borderColor, shape: BoxShape.circle)),
-          ],
-        ),
       ],
     );
   }
 
   Widget _buildHealthProfileProgress(BuildContext context, SwasthyaTapProvider provider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.015),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Progress Ring (75%)
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 60,
-                height: 60,
-                child: CircularProgressIndicator(
-                  value: 0.75,
-                  strokeWidth: 5.5,
-                  color: AppTheme.accentTeal,
-                  backgroundColor: AppTheme.borderColor.withOpacity(0.5),
-                ),
-              ),
-              const Text(
-                '75%',
-                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          // Description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final citizen = provider.currentCitizen;
+    return GestureDetector(
+      onTap: () => _onTabSelected(2),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.015),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Progress Ring
+            Stack(
+              alignment: Alignment.center,
               children: [
-                Text(
-                  _t('health_profile', provider.selectedLanguage),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _t('complete_profile_desc', provider.selectedLanguage),
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
-                ),
-                const SizedBox(height: 8),
-                // Linear Progress bar matching
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: Container(
-                    height: 5,
-                    width: 120,
-                    color: AppTheme.borderColor,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        height: 5,
-                        width: 90,
-                        color: AppTheme.accentTeal,
-                      ),
-                    ),
+                SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: CircularProgressIndicator(
+                    value: citizen.profileCompleteness,
+                    strokeWidth: 5.5,
+                    color: AppTheme.accentTeal,
+                    backgroundColor: AppTheme.borderColor.withOpacity(0.5),
                   ),
+                ),
+                Text(
+                  '${(citizen.profileCompleteness * 100).toInt()}%',
+                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          // Complete button
-          OutlinedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EditMedicalProfile()),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppTheme.accentTeal, width: 1.2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            const SizedBox(width: 16),
+            // Description
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t('health_profile', provider.selectedLanguage),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _t('complete_profile_desc', provider.selectedLanguage),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
+                  ),
+                  const SizedBox(height: 8),
+                  // Linear Progress bar matching
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: Container(
+                      height: 5,
+                      width: 120,
+                      color: AppTheme.borderColor,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: citizen.profileCompleteness,
+                          child: Container(
+                            height: 5,
+                            color: AppTheme.accentTeal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Text(
-              _t('complete_profile_btn', provider.selectedLanguage),
-              style: const TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold, fontSize: 11, height: 1.2),
-              textAlign: TextAlign.center,
+            const SizedBox(width: 8),
+            // Complete button
+            OutlinedButton(
+              onPressed: () => _onTabSelected(2),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.accentTeal, width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              child: Text(
+                _t('complete_profile_btn', provider.selectedLanguage),
+                style: const TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold, fontSize: 11, height: 1.2),
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1128,14 +1090,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                 const SizedBox(height: 14),
                 // Button
                 GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(_t('report_disease_simulated', provider.selectedLanguage)),
-                        backgroundColor: AppTheme.accentTeal,
-                      ),
-                    );
-                  },
+                  onTap: () => _showHealthReportOptions(context, provider),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
@@ -1828,7 +1783,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                 child: Column(
                   children: [
                     // Profile details card (no longer animated to avoid distortion/blurriness)
-                    _buildProfileDetailsCard(context, citizen),
+                    _buildProfileDetailsCard(context, provider, citizen),
                     const SizedBox(height: 18),
 
                   // 11 Expandable Item Cards
@@ -2381,7 +2336,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
-  Widget _buildProfileDetailsCard(BuildContext context, MedicalProfile citizen) {
+  Widget _buildProfileDetailsCard(BuildContext context, SwasthyaTapProvider provider, MedicalProfile citizen) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2400,45 +2355,68 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Left: Avatar with Edit Icon
-          Stack(
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF0F766E), width: 2),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(38),
-                  child: (citizen.email == 'rajesh.kumar@gmail.com' || citizen.fullName == 'Rajesh Kumar')
-                      ? Image.network(
-                          'rajesh_avatar.png',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildInitialsPlaceholder(citizen);
-                          },
-                        )
-                      : _buildInitialsPlaceholder(citizen),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0F766E),
+          GestureDetector(
+            onTap: () async {
+              try {
+                final picker = ImagePicker();
+                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                if (image != null) {
+                  final updatedProfile = citizen.copyWith(profileImage: image.path);
+                  await provider.updateProfile(updatedProfile);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile image updated successfully!'),
+                        backgroundColor: AppTheme.accentTeal,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error choosing image: $e'),
+                      backgroundColor: AppTheme.accentRed,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Stack(
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF0F766E), width: 2),
                   ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 12,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(38),
+                    child: _buildAvatarImage(citizen, fontSize: 24),
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0F766E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 14),
           // Middle: Text details
@@ -2569,7 +2547,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     width: 58,
                     height: 58,
                     child: CircularProgressIndicator(
-                      value: 0.78,
+                      value: citizen.profileCompleteness,
                       strokeWidth: 5,
                       backgroundColor: const Color(0xFFF1F5F9),
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0F766E)),
@@ -2578,9 +2556,9 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        '78%',
-                        style: TextStyle(
+                      Text(
+                        '${(citizen.profileCompleteness * 100).toInt()}%',
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF0F172A),
@@ -2615,7 +2593,31 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
-  Widget _buildInitialsPlaceholder(MedicalProfile citizen) {
+  Widget _buildAvatarImage(MedicalProfile citizen, {double fontSize = 24}) {
+    if (citizen.profileImage != null && citizen.profileImage!.isNotEmpty) {
+      if (kIsWeb || citizen.profileImage!.startsWith('http') || citizen.profileImage!.startsWith('blob:')) {
+        return Image.network(
+          citizen.profileImage!,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildInitialsPlaceholder(citizen, fontSize: fontSize);
+          },
+        );
+      } else {
+        return Image.file(
+          io.File(citizen.profileImage!),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildInitialsPlaceholder(citizen, fontSize: fontSize);
+          },
+        );
+      }
+    }
+    
+    return _buildInitialsPlaceholder(citizen, fontSize: fontSize);
+  }
+
+  Widget _buildInitialsPlaceholder(MedicalProfile citizen, {double fontSize = 24}) {
     String initials = '';
     if (citizen.fullName.trim().isNotEmpty) {
       final parts = citizen.fullName.trim().split(' ');
@@ -2633,7 +2635,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       alignment: Alignment.center,
       child: Text(
         initials,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: fontSize),
       ),
     );
   }
@@ -2705,121 +2707,111 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     return Column(
       children: [
         // Download My Data
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F766E),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Downloading health report (PDF)...')),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+        Material(
+          color: const Color(0xFF0F766E),
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Downloading health report (PDF)...')),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Download My Data',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                    child: const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Download My Data',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Export your health data (PDF)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Export your health data (PDF)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.8),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
-                  ],
-                ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 20),
+                ],
               ),
             ),
           ),
         ),
         const SizedBox(height: 12),
         // Delete Account
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEE2E2),
+        Material(
+          color: const Color(0xFFFEE2E2),
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFCA5A5), width: 1),
+            side: const BorderSide(color: Color(0xFFFCA5A5), width: 1),
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Delete account flow initiated...')),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Delete account flow initiated...')),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Delete Account',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF991B1B),
-                            ),
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Delete Account',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF991B1B),
                           ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Permanently delete your data & account',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFFEF4444),
-                            ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Permanently delete your data & account',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEF4444),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF991B1B), size: 20),
-                  ],
-                ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF991B1B), size: 20),
+                ],
               ),
             ),
           ),
@@ -3367,74 +3359,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     return _buildListVideoCard(video);
                   },
                 ),
-          const SizedBox(height: 24),
 
-          // 6. Downloaded Videos Banner
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFDBEAFE)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.download_done_rounded, color: Color(0xFF10B981), size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        TranslationService.t(context, 'downloaded_offline'),
-                        style: GoogleFonts.inter(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        TranslationService.t(context, 'learn_anywhere'),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: const Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(TranslationService.t(context, 'downloads_soon'))),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Text(
-                        TranslationService.t(context, 'view_downloads'),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1D4ED8),
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded, size: 14, color: Color(0xFF1D4ED8)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -3778,10 +3703,24 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: AppTheme.accentTeal.withOpacity(0.1),
-                  radius: 24,
-                  child: const Icon(Icons.person, color: AppTheme.accentTeal, size: 28),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: _buildAvatarImage(citizen, fontSize: 16),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -3802,7 +3741,9 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                 ),
                 OutlinedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const EditMedicalProfile()));
+                    setState(() {
+                      _currentIndex = 2; // Switch to profile tab
+                    });
                   },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppTheme.accentTeal),
@@ -3817,29 +3758,59 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
 
           // Settings List
           _buildSettingsGroup(TranslationService.t(context, 'account_section'), [
-            _buildSettingsItem(Icons.verified_user_rounded, TranslationService.t(context, 'privacy_security'), TranslationService.t(context, 'privacy_security_sub')),
+            _buildSettingsItem(
+              Icons.verified_user_rounded,
+              TranslationService.t(context, 'privacy_security'),
+              TranslationService.t(context, 'privacy_security_sub'),
+              onTap: () => _showPrivacySecurity(context, provider),
+            ),
             _buildSettingsItem(
               Icons.language_rounded,
               TranslationService.t(context, 'app_language'),
-              provider.selectedLanguage == 'Hindi' ? 'हिन्दी' : 'English',
+              _getLanguageNativeName(provider.selectedLanguage),
               trailingIcon: Icons.swap_horiz_rounded,
               onTap: () {
                 _showLanguageSwitcher(context, provider);
               },
             ),
-            _buildSettingsItem(Icons.notifications_none_rounded, TranslationService.t(context, 'emergency_alerts_setting'), TranslationService.t(context, 'enabled')),
+            _buildSettingsItem(
+              Icons.notifications_none_rounded,
+              TranslationService.t(context, 'emergency_alerts_setting'),
+              provider.emergencyAlertsEnabled ? TranslationService.t(context, 'enabled') : 'Disabled',
+              onTap: () => _showEmergencyAlerts(context, provider),
+            ),
           ]),
           const SizedBox(height: 20),
 
           _buildSettingsGroup(TranslationService.t(context, 'my_health_cards_section'), [
-            _buildSettingsItem(Icons.contactless_rounded, TranslationService.t(context, 'linked_nfc_cards'), TranslationService.t(context, 'active_card_count')),
-            _buildSettingsItem(Icons.people_outline_rounded, TranslationService.t(context, 'family_profiles'), TranslationService.t(context, 'family_added_count')),
+            _buildSettingsItem(
+              Icons.contactless_rounded,
+              TranslationService.t(context, 'linked_nfc_cards'),
+              '1 Active Card',
+              onTap: () => _showLinkedNfcCards(context, provider),
+            ),
+            _buildSettingsItem(
+              Icons.people_outline_rounded,
+              TranslationService.t(context, 'family_profiles'),
+              provider.familyCount == 0 ? 'No family members' : '${provider.familyCount} members added',
+              onTap: () => _showFamilyProfiles(context, provider),
+            ),
           ]),
           const SizedBox(height: 20),
 
           _buildSettingsGroup(TranslationService.t(context, 'help_legal_section'), [
-            _buildSettingsItem(Icons.help_outline_rounded, TranslationService.t(context, 'support_faq'), TranslationService.t(context, 'support_faq_sub')),
-            _buildSettingsItem(Icons.description_outlined, TranslationService.t(context, 'dpdp_consent'), TranslationService.t(context, 'view_legal_terms')),
+            _buildSettingsItem(
+              Icons.help_outline_rounded,
+              TranslationService.t(context, 'support_faq'),
+              TranslationService.t(context, 'support_faq_sub'),
+              onTap: () => _showSupportFaq(context),
+            ),
+            _buildSettingsItem(
+              Icons.description_outlined,
+              TranslationService.t(context, 'dpdp_consent'),
+              TranslationService.t(context, 'view_legal_terms'),
+              onTap: () => _showDpdpConsent(context),
+            ),
           ]),
           const SizedBox(height: 32),
 
@@ -3917,7 +3888,261 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
-  void _showLanguageSwitcher(BuildContext context, SwasthyaTapProvider provider) {
+  String _getLanguageNativeName(String name) {
+    switch (name) {
+      case 'English': return 'English';
+      case 'Hindi': return 'हिंदी';
+      case 'Bengali': return 'বাংলা';
+      case 'Telugu': return 'తెలుగు';
+      case 'Tamil': return 'தமிழ்';
+      case 'Marathi': return 'मराठी';
+      case 'Gujarati': return 'ગુજરાતી';
+      case 'Kannada': return 'ಕನ್ನಡ';
+      case 'Malayalam': return 'മലയാളം';
+      case 'Punjabi': return 'ਪੰਜਾਬੀ';
+      case 'Odia': return 'ଓଡ଼ିଆ';
+      case 'Urdu': return 'اردو';
+      default: return name;
+    }
+  }
+
+  void _showPrivacySecurity(BuildContext context, SwasthyaTapProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'privacy_security'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    TranslationService.t(context, 'privacy_security_sub'),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Biometric Toggle
+                  SwitchListTile.adaptive(
+                    activeColor: AppTheme.accentTeal,
+                    title: const Text('Biometric Authentication', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Require fingerprint/face lock to view health profile', style: TextStyle(fontSize: 11)),
+                    value: provider.isBiometricLockEnabled,
+                    onChanged: (val) {
+                      provider.toggleBiometricLock(val);
+                      setModalState(() {});
+                    },
+                  ),
+                  const Divider(),
+                  
+                  // PIN Protected Toggle
+                  SwitchListTile.adaptive(
+                    activeColor: AppTheme.accentTeal,
+                    title: const Text('4-Digit PIN Security', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Protect card updates and downloads with PIN', style: TextStyle(fontSize: 11)),
+                    value: provider.isPinProtected,
+                    onChanged: (val) {
+                      provider.togglePinProtected(val);
+                      setModalState(() {});
+                    },
+                  ),
+                  
+                  if (provider.isPinProtected) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Current PIN: **** (${provider.pinCode})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                          TextButton(
+                            onPressed: () {
+                              _showChangePinDialog(context, provider);
+                            },
+                            child: const Text('Change PIN', style: TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  
+                  // Access Log History
+                  const Text(
+                    'Card Access Log History',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Simulated logs
+                  _buildLogItem('AIIMS Emergency Room', 'Scanned Card & Profile', '10 minutes ago', isEmergency: true),
+                  _buildLogItem('Apollo First Responder', 'NFC Tag Read', 'Yesterday', isEmergency: true),
+                  _buildLogItem('Self Scan (Offline)', 'NFC Tag Verification', '3 days ago', isEmergency: false),
+                  
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildLogItem(String title, String action, String time, {required bool isEmergency}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isEmergency ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isEmergency ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isEmergency ? Icons.warning_amber_rounded : Icons.history_rounded,
+            color: isEmergency ? AppTheme.accentRed : AppTheme.textSecondary,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                const SizedBox(height: 2),
+                Text(action, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+          Text(time, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePinDialog(BuildContext context, SwasthyaTapProvider provider) {
+    final controller = TextEditingController(text: provider.pinCode);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Change Security PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          obscureText: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter 4 digit PIN',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (controller.text.length == 4) {
+                provider.setPinCode(controller.text);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN updated successfully!'), backgroundColor: AppTheme.accentTeal),
+                );
+              }
+            },
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentTeal)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEmergencyAlerts(BuildContext context, SwasthyaTapProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'emergency_alerts_setting'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 24),
+                  SwitchListTile.adaptive(
+                    activeColor: AppTheme.accentTeal,
+                    title: const Text('Emergency SMS Alerts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Receive notifications when first responders access your profile', style: TextStyle(fontSize: 11)),
+                    value: provider.emergencyAlertsEnabled,
+                    onChanged: (val) {
+                      provider.toggleEmergencyAlerts(val);
+                      setModalState(() {});
+                    },
+                  ),
+                  const Divider(),
+                  SwitchListTile.adaptive(
+                    activeColor: AppTheme.accentTeal,
+                    title: const Text('Blood Donation Broadcasts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Get notified of critical blood requests near your area', style: TextStyle(fontSize: 11)),
+                    value: provider.bloodAlertsEnabled,
+                    onChanged: (val) {
+                      provider.toggleBloodAlerts(val);
+                      setModalState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  void _showLinkedNfcCards(BuildContext context, SwasthyaTapProvider provider) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -3931,30 +4156,525 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
-                TranslationService.t(context, 'switch_language'),
+                TranslationService.t(context, 'linked_nfc_cards'),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 16),
-              ListTile(
-                title: const Text('English', style: TextStyle(fontWeight: FontWeight.bold)),
-                trailing: provider.selectedLanguage == 'English' ? const Icon(Icons.check, color: AppTheme.accentTeal) : null,
-                onTap: () {
-                  provider.setSelectedLanguage('English');
-                  Navigator.pop(context);
-                },
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.contactless_rounded, color: AppTheme.accentTeal, size: 28),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Primary Health Tag', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          const SizedBox(height: 2),
+                          Text('Linked on 15 May 2026 | Active', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(8)),
+                      child: const Text('ACTIVE', style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
               ),
-              const Divider(),
-              ListTile(
-                title: const Text('हिन्दी (Hindi)', style: TextStyle(fontWeight: FontWeight.bold)),
-                trailing: provider.selectedLanguage == 'Hindi' ? const Icon(Icons.check, color: AppTheme.accentTeal) : null,
-                onTap: () {
-                  provider.setSelectedLanguage('Hindi');
-                  Navigator.pop(context);
-                },
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Simulate scanning
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('SwasthyaTap NFC Card linking sequence started. Hold tag near phone back.'), backgroundColor: AppTheme.accentTeal),
+                    );
+                  },
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+                  label: const Text('Link New NFC Card / Ring', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentTeal,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showFamilyProfiles(BuildContext context, SwasthyaTapProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'family_profiles'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  _buildFamilyMemberRow('Sneha Kumar', 'Spouse', 'B+', 'Active'),
+                  _buildFamilyMemberRow('Anil Kumar', 'Father', 'O+', 'Active'),
+                  
+                  if (provider.familyCount > 0) ...List.generate(provider.familyCount, (index) {
+                    return _buildFamilyMemberRow('Family Member ${index + 1}', 'Dependent', 'A+', 'Active');
+                  }),
+                  
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final nameController = TextEditingController();
+                        final relationController = TextEditingController();
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text('Add Family Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextField(
+                                  controller: nameController,
+                                  decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: relationController,
+                                  decoration: const InputDecoration(labelText: 'Relation (e.g. Son, Daughter)', border: OutlineInputBorder()),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              TextButton(
+                                onPressed: () {
+                                  if (nameController.text.isNotEmpty && relationController.text.isNotEmpty) {
+                                    provider.incrementFamilyCount();
+                                    Navigator.pop(ctx);
+                                    setModalState(() {});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('${nameController.text} added successfully!'), backgroundColor: AppTheme.accentTeal),
+                                    );
+                                  }
+                                },
+                                child: const Text('Add', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentTeal)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+                      label: const Text('Add Family Member', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentTeal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildFamilyMemberRow(String name, String relation, String bloodGroup, String status) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppTheme.accentTeal.withOpacity(0.1),
+            child: const Icon(Icons.person_rounded, color: AppTheme.accentTeal),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const SizedBox(height: 2),
+                Text('$relation | Blood Group: $bloodGroup', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(8)),
+            child: Text(status.toUpperCase(), style: const TextStyle(color: Color(0xFF15803D), fontSize: 9, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportFaq(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'support_faq'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  _buildFaqItem(
+                    'How does offline scanning work?',
+                    'Your critical medical information (allergies, emergency contacts, blood group) is compiled into a highly compressed, encrypted NDEF byte payload and written directly to the NFC card chip. Verified first responders can read this offline even without internet connectivity using our offline-decrypt scheme.',
+                  ),
+                  const Divider(),
+                  _buildFaqItem(
+                    'Who can access my health records?',
+                    'Only verified medical professionals and official government first responders who physically scan your NFC card can view your emergency profile. In addition, you receive real-time SMS alerts (if enabled) whenever your card is accessed.',
+                  ),
+                  const Divider(),
+                  _buildFaqItem(
+                    'Is my data safe and compliant?',
+                    'Yes, SwasthyaTap is fully compliant with the Digital Personal Data Protection (DPDP) Act of India. Your health data is securely encrypted at rest and in transit. You hold complete ownership and can edit or revoke consent at any time.',
+                  ),
+                  const Divider(),
+                  _buildFaqItem(
+                    'How can I update my details?',
+                    'Navigate to your Health Profile tab in the citizen portal and tap the edit icons. Once updated, tap "Save" to push changes. To sync these changes to your physical card chip, use the NFC update feature.',
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentTeal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.accentTeal.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.accentTeal, size: 24),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Still need help?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const SizedBox(height: 2),
+                              Text('Chat with our 24/7 Swasthya support assistant', style: TextStyle(color: Colors.grey[600], fontSize: 10.5)),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Redirecting to SwasthyaTap Helpdesk...'), backgroundColor: AppTheme.accentTeal),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentTeal,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          child: const Text('Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildFaqItem(String question, String answer) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(question, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(answer, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5, height: 1.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDpdpConsent(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'dpdp_consent'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Digital Personal Data Protection (DPDP) Act Consent Agreement',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.accentTeal),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Pursuant to the DPDP Act of India, SwasthyaTap informs you of the following terms regarding your digital medical data processing:',
+                    style: TextStyle(fontSize: 11.5, color: AppTheme.textPrimary, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildConsentBullet('1. Specific Purpose', 'Your data is processed solely for providing real-time, life-saving emergency medical details to responders.'),
+                  _buildConsentBullet('2. Data Minimization', 'Only essential information (blood group, allergies, medications, emergency contacts) is shared via the NFC chip.'),
+                  _buildConsentBullet('3. Access & Correction', 'You retain full rights to inspect, update, correct, or request deletion of your health records via this portal.'),
+                  _buildConsentBullet('4. Right to Withdraw', 'You may revoke consent at any time. Revoking consent will disable the SwasthyaTap emergency card scanning features.'),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('DPDP Consent revoked. Card access features suspended.'), backgroundColor: AppTheme.accentRed),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.accentRed),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Revoke Consent', style: TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Consent updated and signed successfully!'), backgroundColor: AppTheme.accentTeal),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentTeal,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Accept & Sign', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildConsentBullet(String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: AppTheme.textPrimary)),
+          const SizedBox(height: 2),
+          Text(desc, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageSwitcher(BuildContext context, SwasthyaTapProvider provider) {
+    final List<Map<String, String>> languages = [
+      {"name": "English", "native": "English"},
+      {"name": "Hindi", "native": "हिंदी"},
+      {"name": "Bengali", "native": "বাংলা"},
+      {"name": "Telugu", "native": "తెలుగు"},
+      {"name": "Tamil", "native": "தமிழ்"},
+      {"name": "Marathi", "native": "मराठी"},
+      {"name": "Gujarati", "native": "ગુજરાતી"},
+      {"name": "Kannada", "native": "ಕನ್ನಡ"},
+      {"name": "Malayalam", "native": "മലയാളം"},
+      {"name": "Punjabi", "native": "ਪੰਜਾਬੀ"},
+      {"name": "Odia", "native": "ଓଡ଼ିଆ"},
+      {"name": "Urdu", "native": "اردو"},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    TranslationService.t(context, 'switch_language'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: languages.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final lang = languages[index];
+                        final isSelected = provider.selectedLanguage == lang['name'];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            '${lang['native']} (${lang['name']})',
+                            style: TextStyle(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? AppTheme.accentTeal : AppTheme.textPrimary,
+                            ),
+                          ),
+                          trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppTheme.accentTeal) : null,
+                          onTap: () {
+                            provider.setSelectedLanguage(lang['name']!);
+                            Navigator.pop(context);
+                            // Show nice toast notification
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  provider.selectedLanguage == 'Hindi' ? 'भाषा बदलकर हिंदी कर दी गई है।' : 'Language changed to ${lang['name']}.'
+                                ),
+                                backgroundColor: AppTheme.accentTeal,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
         );
       },
     );
@@ -3972,6 +4692,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
           ),
         ),
         Container(
+          clipBehavior: Clip.antiAlias, // CLIPPING TO AVOID FLICKER
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -3994,25 +4715,29 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   }
 
   Widget _buildSettingsItem(IconData icon, String title, String subtitle, {IconData? trailingIcon, VoidCallback? onTap}) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.accentTeal.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
+    return Material(
+      color: Colors.transparent,
+      clipBehavior: Clip.antiAlias, // CLIPPING TO AVOID FLICKER
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.accentTeal.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppTheme.accentTeal, size: 18),
         ),
-        child: Icon(icon, color: AppTheme.accentTeal, size: 18),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+        ),
+        trailing: Icon(trailingIcon ?? Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 16),
+        onTap: onTap,
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-      ),
-      trailing: Icon(trailingIcon ?? Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 16),
-      onTap: onTap ?? () {},
     );
   }
 
@@ -4091,6 +4816,170 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
             );
           }),
         ),
+      ),
+    );
+  }
+
+  // ─── Health Report Options and Submission ───────────────────────────────────────
+  void _showHealthReportOptions(BuildContext context, SwasthyaTapProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 16,
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Text(
+                      _t('report_health_issue', provider.selectedLanguage),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Select an option below to submit a new report or view past submissions.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _buildOptionCard(
+                context: context,
+                icon: Icons.add_moderator_rounded,
+                title: 'Submit New Report',
+                subtitle: 'Report symptoms of Dengue, Malaria, or other diseases.',
+                color: const Color(0xFFF97316),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSubmitReportSheet(context, provider);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildOptionCard(
+                context: context,
+                icon: Icons.history_rounded,
+                title: 'Previous Reports',
+                subtitle: 'View and track your submitted health issue reports.',
+                color: AppTheme.accentTeal,
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPreviousReportsSheet(context, provider);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSubmitReportSheet(BuildContext context, SwasthyaTapProvider provider) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SubmitReportScreen(),
+      ),
+    );
+  }
+
+  void _showPreviousReportsSheet(BuildContext context, SwasthyaTapProvider provider) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PreviousReportsScreen(),
       ),
     );
   }
@@ -4189,91 +5078,91 @@ class _ProfileSectionTileState extends State<_ProfileSectionTile> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Header Row
-          Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _isExpanded = !_isExpanded;
-                });
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    // Icon container
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: widget.iconColor.withOpacity(0.08),
-                        shape: BoxShape.circle,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          children: [
+            // Header Row (has its own Material for localized ripple)
+            Material(
+              color: Colors.white,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _isExpanded = !_isExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      // Icon container
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: widget.iconColor.withOpacity(0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(widget.icon, color: widget.iconColor, size: 20),
                       ),
-                      child: Icon(widget.icon, color: widget.iconColor, size: 20),
-                    ),
-                    const SizedBox(width: 14),
-                    // Title + Subtitle
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${widget.number}. ${widget.title}',
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                      const SizedBox(width: 14),
+                      // Title + Subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.number}. ${widget.title}',
+                              style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A)),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.subtitle,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w400,
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.subtitle,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w400,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Trailing (Status/Buttons)
-                    if (widget.trailing != null) ...[
-                      widget.trailing!,
                       const SizedBox(width: 8),
-                    ],
-                    // Expand arrow
-                    AnimatedRotation(
-                      turns: _isExpanded ? 0.5 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF64748B),
-                        size: 20,
+                      // Trailing (Status/Buttons)
+                      if (widget.trailing != null) ...[
+                        widget.trailing!,
+                        const SizedBox(width: 8),
+                      ],
+                      // Expand arrow
+                      AnimatedRotation(
+                        turns: _isExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF64748B),
+                          size: 20,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          // Expanded Content
-          if (_isExpanded) ...[
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: const Color(0xFFFAFAFA),
-              child: widget.child,
-            ),
+            // Expanded Content (outside the header Material)
+            if (_isExpanded) ...[
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                color: const Color(0xFFFAFAFA),
+                child: widget.child,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -4342,6 +5231,39 @@ class HealthEducationLogoPainter extends CustomPainter {
       ..lineTo(size.width * 0.67, size.height * 0.35);
 
     canvas.drawPath(ecgPath, paintEcg);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SimulatedMapPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintBg = Paint()..color = const Color(0xFFF3F4F6);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paintBg);
+
+    final paintRoad = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 6
+      ..style = PaintingStyle.stroke;
+
+    final paintRiver = Paint()
+      ..color = const Color(0xFFE0F2FE)
+      ..strokeWidth = 12
+      ..style = PaintingStyle.stroke;
+
+    // Draw some roads
+    canvas.drawLine(const Offset(0, 40), Offset(size.width, 60), paintRoad);
+    canvas.drawLine(const Offset(80, 0), Offset(100, size.height), paintRoad);
+    canvas.drawLine(Offset(0, size.height * 0.7), Offset(size.width, size.height * 0.6), paintRoad);
+
+    // Draw river
+    final riverPath = Path()
+      ..moveTo(0, size.height * 0.2)
+      ..quadraticBezierTo(size.width * 0.4, size.height * 0.1, size.width * 0.6, size.height * 0.8)
+      ..lineTo(size.width, size.height * 0.9);
+    canvas.drawPath(riverPath, paintRiver);
   }
 
   @override

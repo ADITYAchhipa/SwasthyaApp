@@ -14,6 +14,12 @@ class SwasthyaTapProvider extends ChangeNotifier {
   bool _isInternetAvailable = true;
   bool _isNfcScanning = false;
   String _selectedLanguage = 'English';
+  bool _isBiometricLockEnabled = false;
+  bool _isPinProtected = false;
+  String _pinCode = '1234';
+  bool _emergencyAlertsEnabled = true;
+  bool _bloodAlertsEnabled = true;
+  int _familyCount = 0;
   
   // Scanning results
   String? _scannedNdefData;
@@ -39,6 +45,12 @@ class SwasthyaTapProvider extends ChangeNotifier {
   bool get isInternetAvailable => _isInternetAvailable;
   bool get isNfcScanning => _isNfcScanning;
   String get selectedLanguage => _selectedLanguage;
+  bool get isBiometricLockEnabled => _isBiometricLockEnabled;
+  bool get isPinProtected => _isPinProtected;
+  String get pinCode => _pinCode;
+  bool get emergencyAlertsEnabled => _emergencyAlertsEnabled;
+  bool get bloodAlertsEnabled => _bloodAlertsEnabled;
+  int get familyCount => _familyCount;
   String? get scannedNdefData => _scannedNdefData;
   MedicalProfile? get scannedProfile => _scannedProfile;
   bool get scannedOfflineOnly => _scannedOfflineOnly;
@@ -49,6 +61,36 @@ class SwasthyaTapProvider extends ChangeNotifier {
       _profiles.firstWhere((p) => p.id == _currentCitizenProfileId);
 
   // Setters & Actions
+  void toggleBiometricLock(bool value) {
+    _isBiometricLockEnabled = value;
+    notifyListeners();
+  }
+
+  void togglePinProtected(bool value) {
+    _isPinProtected = value;
+    notifyListeners();
+  }
+
+  void setPinCode(String code) {
+    _pinCode = code;
+    notifyListeners();
+  }
+
+  void toggleEmergencyAlerts(bool value) {
+    _emergencyAlertsEnabled = value;
+    notifyListeners();
+  }
+
+  void toggleBloodAlerts(bool value) {
+    _bloodAlertsEnabled = value;
+    notifyListeners();
+  }
+
+  void incrementFamilyCount() {
+    _familyCount++;
+    notifyListeners();
+  }
+
   void setInternetAvailability(bool value) {
     _isInternetAvailable = value;
     notifyListeners();
@@ -105,6 +147,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
         'insuranceCompany': updatedProfile.insuranceCompany,
         'insurancePolicyNumber': updatedProfile.insurancePolicyNumber,
         'emergencyContacts': updatedProfile.emergencyContacts.map((c) => c.toJson()).toList(),
+        'profileImage': updatedProfile.profileImage,
       });
     } catch (e) {
       debugPrint('updateProfile API error (local cache used): $e');
@@ -235,6 +278,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
       specialInstructions: data['instructions'] ?? 'None',
       organPledge: pledge,
       phoneNumber: '',
+      profileImage: data['profileImage'] as String?,
     );
   }
 

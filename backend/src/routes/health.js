@@ -7,7 +7,7 @@ const { authenticate } = require('../middleware/auth');
 // Submit a disease/health issue report
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { disease, symptoms, severityLevel, lat, lng, locationDescription, additionalNotes } = req.body;
+    const { disease, symptoms, severityLevel, lat, lng, locationDescription, additionalNotes, reportingFor, duration, submitAnonymously } = req.body;
 
     if (!disease) {
       return res.status(400).json({ success: false, message: 'Disease type is required' });
@@ -22,6 +22,9 @@ router.post('/', authenticate, async (req, res) => {
       lng,
       locationDescription: locationDescription || '',
       additionalNotes: additionalNotes || '',
+      reportingFor: reportingFor || 'self',
+      duration: duration || '',
+      submitAnonymously: submitAnonymously || false,
     });
 
     console.log(`\n🦠 Health Report: ${disease} (${severityLevel}) from citizen ${req.user.citizenId}\n`);
@@ -34,6 +37,18 @@ router.post('/', authenticate, async (req, res) => {
   } catch (err) {
     console.error('health report error:', err);
     res.status(500).json({ success: false, message: 'Failed to submit report' });
+  }
+});
+
+// ─── GET /api/health-reports ──────────────────────────────────────────────────
+// Get previous health reports for the logged-in citizen
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const reports = await HealthReport.find({ citizenId: req.user.citizenId }).sort({ createdAt: -1 });
+    res.json({ success: true, reports });
+  } catch (err) {
+    console.error('get health reports error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

@@ -7,7 +7,6 @@ import '../../providers/swasthya_tap_provider.dart';
 import '../../models/models.dart';
 import '../../theme/app_theme.dart';
 import 'citizen_dashboard.dart';
-import 'language_selection_screen.dart';
 import 'profile_setup_screen.dart';
 import '../../utils/translation_service.dart';
 import '../../services/api_service.dart';
@@ -247,10 +246,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
         provider.loginCitizen(citizen);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ProfileSetupScreen(citizen: citizen)),
-        );
+        final isNewUser = result['isNewUser'] == true;
+        if (isNewUser) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => ProfileSetupScreen(citizen: citizen)),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const CitizenDashboard()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -435,32 +442,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           child: Text(
             _t('send_otp'),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Center(
-          child: TextButton(
-            onPressed: () {
-              // Simulated ABHA verification
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('ABHA ID Login (Simulated Verification)'),
-                  backgroundColor: AppTheme.accentTeal,
-                ),
-              );
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
-              );
-            },
-            child: Text(
-              _t('login_abha'),
-              style: const TextStyle(
-                color: AppTheme.accentTeal,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
           ),
         ),
       ],

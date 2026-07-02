@@ -3,6 +3,43 @@ const router = express.Router();
 const crypto = require('crypto');
 const Citizen = require('../models/Citizen');
 const { authenticate } = require('../middleware/auth');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+const uploadToCloudinary = (fileBuffer, originalName) => {
+  return new Promise((resolve, reject) => {
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.warn("⚠️ Cloudinary credentials missing in .env. Falling back to mock URL.");
+      return resolve({
+        secure_url: "https://res.cloudinary.com/demo/image/upload/v1570530932/sample.jpg",
+        public_id: "mock_report_" + Date.now(),
+      });
+    }
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "swasthyatap_reports",
+        resource_type: "auto",
+        public_id: `report_${Date.now()}_${originalName.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};
 
 // ─── Helper: Format citizen for response ─────────────────────────────────────
 function formatCitizen(c) {
@@ -22,6 +59,7 @@ function formatCitizen(c) {
     organPledge: c.organPledge,
     insuranceCompany: c.insuranceCompany,
     insurancePolicyNumber: c.insurancePolicyNumber,
+    medicalReports: c.medicalReports || [],
     isBloodDonor: c.isBloodDonor,
     donorRadiusKm: c.donorRadiusKm,
     homeLat: c.homeLat,

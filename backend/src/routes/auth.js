@@ -46,9 +46,16 @@ initTransporter();
 
 // Helper: send Email OTP
 const sendEmailOtp = async (email, otp) => {
-  const senderEmail = (process.env.SMTP_USER && process.env.SMTP_HOST) 
-    ? process.env.SMTP_USER 
-    : (transporter && transporter.options && transporter.options.auth ? transporter.options.auth.user : 'no-reply@swasthyatap.in');
+  let senderEmail = 'no-reply@swasthyatap.in';
+  if (process.env.SMTP_USER && process.env.SMTP_HOST) {
+    if (process.env.SMTP_USER === 'resend') {
+      senderEmail = 'onboarding@resend.dev';
+    } else {
+      senderEmail = process.env.SMTP_USER;
+    }
+  } else if (transporter && transporter.options && transporter.options.auth) {
+    senderEmail = transporter.options.auth.user;
+  }
 
   const mailOptions = {
     from: `"SwasthyaTap" <${senderEmail}>`,
@@ -133,11 +140,14 @@ router.post('/send-otp', async (req, res) => {
     // Send email (actual or mock console log)
     await sendEmailOtp(cleanEmail, otp);
 
+    const isEthereal = transporter && transporter.options && transporter.options.host && transporter.options.host.includes('ethereal');
+    const hasRealSmtp = process.env.SMTP_USER && process.env.SMTP_HOST && !isEthereal;
+    const showDevOtp = process.env.NODE_ENV !== 'production' && (!hasRealSmtp || process.env.SHOW_DEV_OTP === 'true');
+
     res.json({
       success: true,
       message: `OTP sent to ${cleanEmail}`,
-      // Only return OTP in development for testing purposes
-      ...(process.env.NODE_ENV !== 'production' && { devOtp: otp }),
+      ...(showDevOtp && { devOtp: otp }),
     });
   } catch (err) {
     console.error('send-otp error:', err);
@@ -245,11 +255,15 @@ router.post('/hospital/send-otp', async (req, res) => {
 
     console.log(`\n🏥 Hospital OTP for ${hospital.name} (+91-${cleanPhone}): ${otp}\n`);
 
+    const isEthereal = transporter && transporter.options && transporter.options.host && transporter.options.host.includes('ethereal');
+    const hasRealSmtp = process.env.SMTP_USER && process.env.SMTP_HOST && !isEthereal;
+    const showDevOtp = process.env.NODE_ENV !== 'production' && (!hasRealSmtp || process.env.SHOW_DEV_OTP === 'true');
+
     res.json({
       success: true,
       message: `OTP sent to registered number for ${hospital.name}`,
       hospitalName: hospital.name,
-      ...(process.env.NODE_ENV !== 'production' && { devOtp: otp }),
+      ...(showDevOtp && { devOtp: otp }),
     });
   } catch (err) {
     console.error('hospital send-otp error:', err);
@@ -339,6 +353,7 @@ function formatCitizen(c) {
     organPledge: c.organPledge,
     insuranceCompany: c.insuranceCompany,
     insurancePolicyNumber: c.insurancePolicyNumber,
+    medicalReports: c.medicalReports || [],
     isBloodDonor: c.isBloodDonor,
     donorRadiusKm: c.donorRadiusKm,
     homeLat: c.homeLat,

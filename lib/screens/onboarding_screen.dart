@@ -1095,7 +1095,7 @@ class OnboardingBloodNetworkWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Image.network(
-        'india_map_cropped.png',
+        'india_map_cropped.webp',
         fit: BoxFit.contain,
       ),
     );

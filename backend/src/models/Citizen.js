@@ -56,9 +56,18 @@ const CitizenSchema = new mongoose.Schema(
     // Organ Donation
     organPledge: OrganPledgeSchema,
 
-    // Insurance
+     // Insurance
     insuranceCompany: { type: String, default: '' },
     insurancePolicyNumber: { type: String, default: '' },
+
+    // Medical Reports
+    medicalReports: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      }
+    ],
 
     // Blood Donor Details
     isBloodDonor: { type: Boolean, default: false },

@@ -3,7 +3,10 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 
 void downloadFile(List<int> bytes, String filename) {
-  throw UnsupportedError('Cannot download file on this platform');
+  Printing.sharePdf(
+    bytes: Uint8List.fromList(bytes),
+    filename: filename,
+  );
 }
 
 void launchUrlCompat(String url) {

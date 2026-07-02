@@ -1,4 +1,7 @@
 import 'dart:html' as html;
+import 'dart:typed_data';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 
 void downloadFile(List<int> bytes, String filename) {
   final blob = html.Blob([bytes], 'application/pdf');
@@ -9,7 +12,11 @@ void downloadFile(List<int> bytes, String filename) {
   html.document.body?.children.add(anchor);
   anchor.click();
   anchor.remove();
-  html.Url.revokeObjectUrl(url);
+  
+  // Delay revocation to prevent WebKitBlobResource error in Safari
+  Future.delayed(const Duration(milliseconds: 1000), () {
+    html.Url.revokeObjectUrl(url);
+  });
 }
 
 void launchUrlCompat(String url) {
@@ -17,7 +24,8 @@ void launchUrlCompat(String url) {
 }
 
 void printPdfBytes(List<int> bytes, String filename) {
-  final blob = html.Blob([bytes], 'application/pdf');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  html.window.open(url, '_blank');
+  Printing.layoutPdf(
+    onLayout: (PdfPageFormat format) async => Uint8List.fromList(bytes),
+    name: filename,
+  );
 }

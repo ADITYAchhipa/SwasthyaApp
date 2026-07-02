@@ -5,8 +5,16 @@ const HealthReportSchema = new mongoose.Schema(
     citizenId: { type: String, required: true },
     disease: {
       type: String,
-      enum: ['Dengue', 'Malaria', 'COVID-19', 'Chikungunya', 'Typhoid', 'Cholera', 'Other'],
       required: true,
+    },
+    reportingFor: {
+      type: String,
+      default: 'self',
+    },
+    duration: String,
+    submitAnonymously: {
+      type: Boolean,
+      default: false,
     },
     symptoms: [String],
     severityLevel: {

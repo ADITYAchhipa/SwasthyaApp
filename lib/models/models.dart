@@ -95,6 +95,7 @@ class MedicalProfile {
   final double homeLng;
   final String phoneNumber;
   final String email;
+  final String? profileImage;
 
   MedicalProfile({
     required this.id,
@@ -118,6 +119,7 @@ class MedicalProfile {
     this.homeLng = 77.5946,
     required this.phoneNumber,
     this.email = '',
+    this.profileImage,
   });
 
   // Generates offline NDEF JSON payload (max 8KB, keeps it lightweight)
@@ -135,6 +137,7 @@ class MedicalProfile {
       'instructions': specialInstructions,
       'consentHash': organPledge?.signatureHash ?? '',
       'email': email,
+      'profileImage': profileImage,
     };
     return jsonEncode(data);
   }
@@ -160,6 +163,7 @@ class MedicalProfile {
     double? homeLng,
     String? phoneNumber,
     String? email,
+    String? profileImage,
   }) {
     return MedicalProfile(
       id: id,
@@ -183,7 +187,22 @@ class MedicalProfile {
       homeLng: homeLng ?? this.homeLng,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       email: email ?? this.email,
+      profileImage: profileImage ?? this.profileImage,
     );
+  }
+
+  double get profileCompleteness {
+    double score = 0.0;
+    if (fullName.trim().isNotEmpty && fullName != 'SwasthyaTap User') score += 0.15;
+    if (bloodGroup.trim().isNotEmpty && bloodGroup != 'Unknown') score += 0.15;
+    if (age != null) score += 0.10;
+    if (address.trim().isNotEmpty) score += 0.10;
+    if (allergies.trim().isNotEmpty && allergies != 'None') score += 0.10;
+    if (medications.trim().isNotEmpty && medications != 'None') score += 0.10;
+    if (emergencyContacts.isNotEmpty) score += 0.15;
+    if (organPledge != null) score += 0.10;
+    if (insuranceCompany.trim().isNotEmpty) score += 0.05;
+    return score;
   }
 }
 
