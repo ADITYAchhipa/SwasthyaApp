@@ -34,14 +34,25 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/health-reports', healthRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/api/ping', (req, res) => {
+const healthCheck = (req, res) => {
+  const mongoStatus = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
   res.json({
-    status: 'ok',
+    status: 'healthy',
     message: 'SwasthyaTap API is running',
     version: '1.0.0',
+    mongodb: mongoStatus[mongoose.connection.readyState] || 'unknown',
     timestamp: new Date().toISOString(),
   });
-});
+};
+
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
+app.get('/api/ping', healthCheck);
 
 // ─── 404 Fallback ─────────────────────────────────────────────────────────────
 app.use((req, res) => {
@@ -55,34 +66,34 @@ app.use((err, req, res, next) => {
 });
 
 // ─── Database + Server Start ──────────────────────────────────────────────────
-const mongoUri = process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
+
 mongoose
   .connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
   .then(() => {
-    console.log('\n✅ Connected to MongoDB:', mongoUri);
-    app.listen(PORT, () => {
-      console.log(`🚀 SwasthyaTap API running on http://localhost:${PORT}`);
-      console.log(`📡 Health check: http://localhost:${PORT}/api/ping\n`);
-    });
+    console.log('✅ Connected to MongoDB');
   })
   .catch((err) => {
-    console.error('❌ MongoDB Atlas connection failed:', err.message);
-    if (mongoUri !== 'mongodb://localhost:27017/swasthyatap') {
+    console.error('❌ MongoDB connection failed:', err.message);
+    if (!process.env.VERCEL && mongoUri !== 'mongodb://localhost:27017/swasthyatap') {
       console.log('🔄 Attempting fallback connection to local MongoDB...');
       mongoose
         .connect('mongodb://localhost:27017/swasthyatap')
-        .then(() => {
-          console.log('✅ Connected to local MongoDB fallback!');
-          app.listen(PORT, () => {
-            console.log(`🚀 SwasthyaTap API running on http://localhost:${PORT}`);
-            console.log(`📡 Health check: http://localhost:${PORT}/api/ping\n`);
-          });
-        })
+        .then(() => console.log('✅ Connected to local MongoDB fallback!'))
         .catch((fallbackErr) => {
           console.error('❌ Local fallback MongoDB connection failed:', fallbackErr.message);
           process.exit(1);
         });
-    } else {
+    } else if (!process.env.VERCEL) {
       process.exit(1);
     }
   });
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 SwasthyaTap API running on http://localhost:${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/health\n`);
+  });
+}
+
+module.exports = app;
