@@ -17,7 +17,7 @@ class ApiService {
     const bool useProduction = true;
 
     if (useProduction) {
-      return 'https://swasthya-114dgkwnr-adityas-projects-b63fea21.vercel.app/api';
+      return 'https://swasthya-pd7dbtswn-adityas-projects-b63fea21.vercel.app/api';
     }
 
     if (kIsWeb) return 'http://localhost:3000/api';
