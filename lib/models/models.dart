@@ -96,6 +96,8 @@ class MedicalProfile {
   final String phoneNumber;
   final String email;
   final String? profileImage;
+  final List<dynamic> medicalReports;
+  final List<dynamic> receipts;
 
   MedicalProfile({
     required this.id,
@@ -120,6 +122,8 @@ class MedicalProfile {
     required this.phoneNumber,
     this.email = '',
     this.profileImage,
+    this.medicalReports = const [],
+    this.receipts = const [],
   });
 
   // Generates offline NDEF JSON payload (max 8KB, keeps it lightweight)
@@ -164,6 +168,8 @@ class MedicalProfile {
     String? phoneNumber,
     String? email,
     String? profileImage,
+    List<dynamic>? medicalReports,
+    List<dynamic>? receipts,
   }) {
     return MedicalProfile(
       id: id,
@@ -188,6 +194,8 @@ class MedicalProfile {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       email: email ?? this.email,
       profileImage: profileImage ?? this.profileImage,
+      medicalReports: medicalReports ?? this.medicalReports,
+      receipts: receipts ?? this.receipts,
     );
   }
 
@@ -288,6 +296,219 @@ class BloodRequest {
       status: status ?? this.status,
       responses: responses ?? this.responses,
       timestamp: timestamp,
+    );
+  }
+}
+
+class HealthReport {
+  final String id;
+  final String reportName;
+  final String hospitalName;
+  final String department;
+  final String doctorName;
+  final String reportDate; // e.g., '12 May 2026'
+  final String? bloodGroup;
+  final List<String> tags;
+  final String category; // 'Blood Tests', 'Radiology', 'MRI', 'CT Scan', 'Prescription', 'Discharge Summary', 'ECG', 'Others'
+  final String uploadedBy;
+  final String fileType; // 'PDF', 'JPG', etc.
+  final String notes;
+  final bool isAbnormal;
+  final bool isFavorite;
+  final String fileSize; // e.g. '245 KB'
+  final String referenceId;
+  final String version;
+
+  HealthReport({
+    required this.id,
+    required this.reportName,
+    required this.hospitalName,
+    required this.department,
+    required this.doctorName,
+    required this.reportDate,
+    this.bloodGroup,
+    required this.tags,
+    required this.category,
+    required this.uploadedBy,
+    required this.fileType,
+    required this.notes,
+    this.isAbnormal = false,
+    this.isFavorite = false,
+    required this.fileSize,
+    required this.referenceId,
+    this.version = '1.0.0',
+  });
+
+  HealthReport copyWith({
+    String? reportName,
+    String? hospitalName,
+    String? department,
+    String? doctorName,
+    String? reportDate,
+    String? bloodGroup,
+    List<String>? tags,
+    String? category,
+    String? uploadedBy,
+    String? fileType,
+    String? notes,
+    bool? isAbnormal,
+    bool? isFavorite,
+    String? fileSize,
+    String? referenceId,
+    String? version,
+  }) {
+    return HealthReport(
+      id: id,
+      reportName: reportName ?? this.reportName,
+      hospitalName: hospitalName ?? this.hospitalName,
+      department: department ?? this.department,
+      doctorName: doctorName ?? this.doctorName,
+      reportDate: reportDate ?? this.reportDate,
+      bloodGroup: bloodGroup ?? this.bloodGroup,
+      tags: tags ?? this.tags,
+      category: category ?? this.category,
+      uploadedBy: uploadedBy ?? this.uploadedBy,
+      fileType: fileType ?? this.fileType,
+      notes: notes ?? this.notes,
+      isAbnormal: isAbnormal ?? this.isAbnormal,
+      isFavorite: isFavorite ?? this.isFavorite,
+      fileSize: fileSize ?? this.fileSize,
+      referenceId: referenceId ?? this.referenceId,
+      version: version ?? this.version,
+    );
+  }
+}
+
+class PrescriptionMedicine {
+  final String id;
+  final String name;
+  final String strength;
+  final bool morning;
+  final bool afternoon;
+  final bool night;
+  final bool beforeFood;
+  final bool afterFood;
+  final String duration;
+  final String quantity;
+  final String purpose;
+  final String sideEffects;
+  final String storage;
+  final String alternatives;
+  final bool isTakenToday;
+
+  PrescriptionMedicine({
+    required this.id,
+    required this.name,
+    required this.strength,
+    required this.morning,
+    required this.afternoon,
+    required this.night,
+    required this.beforeFood,
+    required this.afterFood,
+    required this.duration,
+    required this.quantity,
+    required this.purpose,
+    required this.sideEffects,
+    required this.storage,
+    required this.alternatives,
+    this.isTakenToday = false,
+  });
+
+  PrescriptionMedicine copyWith({
+    String? name,
+    String? strength,
+    bool? morning,
+    bool? afternoon,
+    bool? night,
+    bool? beforeFood,
+    bool? afterFood,
+    String? duration,
+    String? quantity,
+    String? purpose,
+    String? sideEffects,
+    String? storage,
+    String? alternatives,
+    bool? isTakenToday,
+  }) {
+    return PrescriptionMedicine(
+      id: id,
+      name: name ?? this.name,
+      strength: strength ?? this.strength,
+      morning: morning ?? this.morning,
+      afternoon: afternoon ?? this.afternoon,
+      night: night ?? this.night,
+      beforeFood: beforeFood ?? this.beforeFood,
+      afterFood: afterFood ?? this.afterFood,
+      duration: duration ?? this.duration,
+      quantity: quantity ?? this.quantity,
+      purpose: purpose ?? this.purpose,
+      sideEffects: sideEffects ?? this.sideEffects,
+      storage: storage ?? this.storage,
+      alternatives: alternatives ?? this.alternatives,
+      isTakenToday: isTakenToday ?? this.isTakenToday,
+    );
+  }
+}
+
+class Prescription {
+  final String id;
+  final String doctorName;
+  final String doctorPhoto;
+  final String qualification;
+  final String hospitalName;
+  final String prescriptionDate;
+  final String validUntil;
+  final String diagnosis;
+  final List<PrescriptionMedicine> medicines;
+  final List<String> testsRecommended;
+  final String doctorNotes;
+  final String status; // 'Active', 'Completed', 'Expired', 'Draft'
+  final bool isFavorite;
+
+  Prescription({
+    required this.id,
+    required this.doctorName,
+    required this.doctorPhoto,
+    required this.qualification,
+    required this.hospitalName,
+    required this.prescriptionDate,
+    required this.validUntil,
+    required this.diagnosis,
+    required this.medicines,
+    required this.testsRecommended,
+    required this.doctorNotes,
+    required this.status,
+    this.isFavorite = false,
+  });
+
+  Prescription copyWith({
+    String? doctorName,
+    String? doctorPhoto,
+    String? qualification,
+    String? hospitalName,
+    String? prescriptionDate,
+    String? validUntil,
+    String? diagnosis,
+    List<PrescriptionMedicine>? medicines,
+    List<String>? testsRecommended,
+    String? doctorNotes,
+    String? status,
+    bool? isFavorite,
+  }) {
+    return Prescription(
+      id: id,
+      doctorName: doctorName ?? this.doctorName,
+      doctorPhoto: doctorPhoto ?? this.doctorPhoto,
+      qualification: qualification ?? this.qualification,
+      hospitalName: hospitalName ?? this.hospitalName,
+      prescriptionDate: prescriptionDate ?? this.prescriptionDate,
+      validUntil: validUntil ?? this.validUntil,
+      diagnosis: diagnosis ?? this.diagnosis,
+      medicines: medicines ?? this.medicines,
+      testsRecommended: testsRecommended ?? this.testsRecommended,
+      doctorNotes: doctorNotes ?? this.doctorNotes,
+      status: status ?? this.status,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 }

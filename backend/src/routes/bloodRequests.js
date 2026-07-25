@@ -13,6 +13,7 @@ function isCompatible(patientGroup, donorGroup) {
   if (patientGroup === 'A+' && ['A+', 'A-', 'O+', 'O-'].includes(donorGroup)) return true;
   if (patientGroup === 'B+' && ['B+', 'B-', 'O+', 'O-'].includes(donorGroup)) return true;
   return false;
+
 }
 
 // ─── Helper: Haversine distance in km ────────────────────────────────────────

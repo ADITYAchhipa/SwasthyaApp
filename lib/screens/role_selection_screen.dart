@@ -6,6 +6,9 @@ import '../providers/swasthya_tap_provider.dart';
 import '../theme/app_theme.dart';
 import 'citizen_portal/registration_screen.dart';
 import 'hospital_portal/hospital_login_screen.dart';
+import 'onboarding_screen.dart';
+
+import '../utils/translation_service.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({Key? key}) : super(key: key);
@@ -29,68 +32,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     {"name": "Punjabi", "native": "ਪੰਜਾਬੀ"},
     {"name": "Odia", "native": "ଓଡ଼ିଆ"},
     {"name": "Urdu", "native": "اردو"},
+    {"name": "Assamese", "native": "অসমীয়া"},
   ];
 
-  static const Map<String, Map<String, String>> _localizations = {
-    'English': {
-      'how_to_use': 'How would you like to\nuse ',
-      'choose_role': 'Choose your role to continue',
-      'citizen_title': 'I am a Citizen',
-      'citizen_desc': 'Manage your health identity, emergency contacts & donate blood',
-      'hospital_title': 'Government Hospital',
-      'hospital_desc': 'Scan patient cards, manage blood requests & access health records',
-      'secure_title': 'Your data is encrypted and 100% secure',
-      'secure_sub': 'We respect your privacy',
-      'made_in_india': 'Made in India, For India ',
-    },
-    'Hindi': {
-      'how_to_use': 'आप कैसे उपयोग करना\nचाहेंगे ',
-      'choose_role': 'आगे बढ़ने के लिए अपनी भूमिका चुनें',
-      'citizen_title': 'मैं एक नागरिक हूँ',
-      'citizen_desc': 'अपनी स्वास्थ्य पहचान, आपातकालीन संपर्क प्रबंधित करें और रक्तदान करें',
-      'hospital_title': 'सरकारी अस्पताल',
-      'hospital_desc': 'मरीज के कार्ड स्कैन करें, रक्त अनुरोध प्रबंधित करें और स्वास्थ्य रिकॉर्ड तक पहुंचें',
-      'secure_title': 'आपका डेटा एन्क्रिप्टेड और 100% सुरक्षित है',
-      'secure_sub': 'हम आपकी गोपनीयता का सम्मान करते हैं',
-      'made_in_india': 'भारत में निर्मित, भारत के लिए ',
-    },
-    'Bengali': {
-      'how_to_use': 'আপনি কিভাবে ব্যবহার\nকরতে চান ',
-      'choose_role': 'চালিয়ে যেতে আপনার ভূমিকা চয়ন করুন',
-      'citizen_title': 'আমি একজন নাগরিক',
-      'citizen_desc': 'আপনার স্বাস্থ্য প্রোফাইল, জরুরী যোগাযোগ পরিচালনা করুন এবং রক্তদান করুন',
-      'hospital_title': 'সরকারি হাসপাতাল',
-      'hospital_desc': 'রোগীর কার্ড স্ক্যান করুন, রক্তের অনুরোধ পরিচালনা করুন এবং স্বাস্থ্য রেকর্ড অ্যাক্সেস করুন',
-      'secure_title': 'আপনার ডেটা এনক্রিপ্ট করা এবং 100% নিরাপদ',
-      'secure_sub': 'আমরা আপনার গোপনীয়তাকে সম্মান করি',
-      'made_in_india': 'ভারতে তৈরি, ভারতের জন্য ',
-    },
-    'Tamil': {
-      'how_to_use': 'நீங்கள் எவ்வாறு பயன்படுத்த\nவிரும்புகிறீர்கள் ',
-      'choose_role': 'தொடர உங்கள் பாத்திரத்தை தேர்வு செய்யவும்',
-      'citizen_title': 'நான் ஒரு குடிமகன்',
-      'citizen_desc': 'உங்கள் சுகாதார அடையாளம், அவசர தொடர்புகளை నిர்வகிக்கவும் & இரத்த தானம் செய்யவும்',
-      'hospital_title': 'அரசு மருத்துவமனை',
-      'hospital_desc': 'நோயாளி அட்டைகளை ஸ்கேன் செய்யவும், இரத்தக் கோரிக்கைகளை நிர்வகிக்கவும் மற்றும் சுகாதார பதிவுகளை அணுகவும்',
-      'secure_title': 'உங்கள் தரவு குறியாக்கம் செய்யப்பட்டு 100% பாதுகாப்பானது',
-      'secure_sub': 'உங்கள் தனியுரிமையை நாங்கள் மதிக்கிறோம்',
-      'made_in_india': 'இந்தியாவில் தயாரிக்கப்பட்டது, இந்தியாவிற்காக ',
-    },
-    'Telugu': {
-      'how_to_use': 'మీరు ఎలా ఉపయోగించాలనుకుంటున్నారు ',
-      'choose_role': 'కొనసాగించడానికి మీ పాత్రను ఎంచుకోండి',
-      'citizen_title': 'నేను పౌరుడిని',
-      'citizen_desc': 'మీ ఆరోగ్య గుర్తింపు, అత్యవసర పరిచయాలను నిర్వహించండి & రక్తదానం చేయండి',
-      'hospital_title': 'ప్రభుత్వ ఆసుపత్రి',
-      'hospital_desc': 'రోగి కార్డులను స్కాన్ చేయండి, రోగి ప్రొఫైల్స్ మరియు ఆరోగ్య రికార్డులను యాక్సెస్ చేయండి',
-      'secure_title': 'మీ డేటా ఎన్‌క్రిప్ట్ చేయబడింది మరియు 100% సురక్షితం',
-      'secure_sub': 'మేము మీ గోప్యతను గౌరవిస్తాము',
-      'made_in_india': 'భారతదేశంలో తయారు చేయబడింది, భారతదేశం కోసం ',
-    }
-  };
-
   String _t(String key) {
-    return _localizations[_selectedLanguage]?[key] ?? _localizations['English']![key]!;
+    return TranslationService.t(context, key);
   }
 
   @override
@@ -131,6 +77,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       // Mini Brand Logo (SwasthyaTap.in with heart/ECG logo)
                       Row(
                         children: [
+                          IconButton(
+                            onPressed: () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              } else {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F766E), size: 22),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 8),
                           Stack(
                             alignment: Alignment.center,
                             children: [

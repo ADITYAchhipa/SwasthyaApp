@@ -60,6 +60,7 @@ function formatCitizen(c) {
     insuranceCompany: c.insuranceCompany,
     insurancePolicyNumber: c.insurancePolicyNumber,
     medicalReports: c.medicalReports || [],
+    receipts: c.receipts || [],
     isBloodDonor: c.isBloodDonor,
     donorRadiusKm: c.donorRadiusKm,
     homeLat: c.homeLat,

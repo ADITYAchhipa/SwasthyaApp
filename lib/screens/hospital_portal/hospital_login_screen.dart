@@ -245,10 +245,18 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Top Bar: Help Link
+                    // Top Bar: Back Button & Help Link
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F766E)),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            elevation: 1,
+                          ),
+                        ),
                         GestureDetector(
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(

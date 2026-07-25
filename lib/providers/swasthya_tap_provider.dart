@@ -35,11 +35,21 @@ class SwasthyaTapProvider extends ChangeNotifier {
   // Active simulation timer
   Timer? _simulationTimer;
 
+  // Health Reports state
+  final List<HealthReport> _healthReports = [];
+
+  // Prescriptions state
+  final List<Prescription> _prescriptions = [];
+
   SwasthyaTapProvider() {
     _seedProfiles();
+    _seedHealthReports();
+    _seedPrescriptions();
   }
 
   // Getters
+  List<Prescription> get prescriptions => _prescriptions;
+  List<HealthReport> get healthReports => _healthReports;
   List<MedicalProfile> get profiles => _profiles;
   String get currentCitizenProfileId => _currentCitizenProfileId;
   bool get isInternetAvailable => _isInternetAvailable;
@@ -639,6 +649,450 @@ class SwasthyaTapProvider extends ChangeNotifier {
     // Seed organ pledges for some users to allow instant verification demo
     signOrganPledge('x7k9m2', ['Corneas', 'Heart', 'Kidneys']);
     signOrganPledge('a2m9b7', ['All Organs', 'Tissues']);
+  }
+
+  void toggleReportFavorite(String reportId) {
+    final idx = _healthReports.indexWhere((r) => r.id == reportId);
+    if (idx != -1) {
+      _healthReports[idx] = _healthReports[idx].copyWith(
+        isFavorite: !_healthReports[idx].isFavorite,
+      );
+      notifyListeners();
+    }
+  }
+
+  void updateReportNotes(String reportId, String notes) {
+    final idx = _healthReports.indexWhere((r) => r.id == reportId);
+    if (idx != -1) {
+      _healthReports[idx] = _healthReports[idx].copyWith(
+        notes: notes,
+      );
+      notifyListeners();
+    }
+  }
+
+  void deleteReport(String reportId) {
+    _healthReports.removeWhere((r) => r.id == reportId);
+    notifyListeners();
+  }
+
+  void _seedHealthReports() {
+    _healthReports.addAll([
+      HealthReport(
+        id: 'rep1',
+        reportName: 'Complete Blood Count (CBC)',
+        hospitalName: 'CityCare Hospital',
+        department: 'Hematology',
+        doctorName: 'Dr. Rahul Sharma',
+        reportDate: '12 May 2026',
+        bloodGroup: 'B+',
+        tags: ['Hematology', 'Routine Checkup'],
+        category: 'Blood Tests',
+        uploadedBy: 'CityCare Lab - Tech 04',
+        fileType: 'PDF',
+        notes: 'Platelets are slightly on the lower side. Rest parameters are within limits. Advised to stay hydrated and repeat test in 2 weeks.',
+        isAbnormal: true,
+        isFavorite: false,
+        fileSize: '245 KB',
+        referenceId: 'CBC1205250001',
+      ),
+      HealthReport(
+        id: 'rep2',
+        reportName: 'MRI Brain',
+        hospitalName: 'Apollo Hospitals',
+        department: 'Neurology',
+        doctorName: 'Dr. Priya Iyer',
+        reportDate: '02 May 2026',
+        bloodGroup: 'B+',
+        tags: ['Neurology', 'Diagnostic'],
+        category: 'MRI',
+        uploadedBy: 'Apollo Imaging Wing',
+        fileType: 'PDF',
+        notes: 'Brain scan shows normal grey-white matter distribution. No acute infarct or hemorrhage detected.',
+        isAbnormal: false,
+        isFavorite: true,
+        fileSize: '4.2 MB',
+        referenceId: 'MRI0205268892',
+      ),
+      HealthReport(
+        id: 'rep3',
+        reportName: 'Liver Function Test (LFT)',
+        hospitalName: 'Manipal Hospital',
+        department: 'Biochemistry',
+        doctorName: 'Dr. Vikram Sen',
+        reportDate: '20 Apr 2026',
+        bloodGroup: 'B+',
+        tags: ['Biochemistry', 'Liver'],
+        category: 'Blood Tests',
+        uploadedBy: 'Manipal Diagnostics Lab',
+        fileType: 'PDF',
+        notes: 'SGOT and SGPT levels are elevated, indicating mild liver inflammation. Limit oily food and alcohol intake.',
+        isAbnormal: true,
+        isFavorite: false,
+        fileSize: '180 KB',
+        referenceId: 'LFT2004260023',
+      ),
+      HealthReport(
+        id: 'rep4',
+        reportName: 'X-Ray Chest',
+        hospitalName: 'CityCare Hospital',
+        department: 'Radiology',
+        doctorName: 'Dr. Rahul Sharma',
+        reportDate: '10 Apr 2026',
+        bloodGroup: 'B+',
+        tags: ['Pulmonology', 'Imaging'],
+        category: 'Radiology',
+        uploadedBy: 'CityCare Radiology Dept',
+        fileType: 'PDF',
+        notes: 'Lung fields are clear. No active infiltrates, cardiomegaly or pleural effusion.',
+        isAbnormal: false,
+        isFavorite: false,
+        fileSize: '1.5 MB',
+        referenceId: 'XRY1004261192',
+      ),
+      HealthReport(
+        id: 'rep5',
+        reportName: 'Thyroid Profile (T3, T4, TSH)',
+        hospitalName: 'Dr. Lal PathLabs',
+        department: 'Endocrinology',
+        doctorName: 'Dr. S. K. Gupta',
+        reportDate: '05 Apr 2026',
+        bloodGroup: 'B+',
+        tags: ['Endocrinology', 'Thyroid'],
+        category: 'Blood Tests',
+        uploadedBy: 'Dr. Lal PathLabs Center 12',
+        fileType: 'PDF',
+        notes: 'TSH is slightly high, suggesting subclinical hypothyroidism. Consult endocrinologist.',
+        isAbnormal: true,
+        isFavorite: false,
+        fileSize: '195 KB',
+        referenceId: 'THY0504265431',
+      ),
+      HealthReport(
+        id: 'rep6',
+        reportName: 'ECG Report',
+        hospitalName: 'Fortis Hospital',
+        department: 'Cardiology',
+        doctorName: 'Dr. Anil Mehta',
+        reportDate: '28 Mar 2026',
+        bloodGroup: 'B+',
+        tags: ['Cardiology', 'Heart'],
+        category: 'ECG',
+        uploadedBy: 'Fortis Cardiac Unit',
+        fileType: 'PDF',
+        notes: 'Normal sinus rhythm, heart rate 72 bpm. No ST-T changes observed.',
+        isAbnormal: false,
+        isFavorite: false,
+        fileSize: '850 KB',
+        referenceId: 'ECG2803260908',
+      ),
+      HealthReport(
+        id: 'rep7',
+        reportName: 'Lipid Profile',
+        hospitalName: 'CityCare Hospital',
+        department: 'Cardiology',
+        doctorName: 'Dr. Rahul Sharma',
+        reportDate: '18 Mar 2026',
+        bloodGroup: 'B+',
+        tags: ['Cardiology', 'Cholesterol'],
+        category: 'Blood Tests',
+        uploadedBy: 'CityCare Lab - Tech 04',
+        fileType: 'PDF',
+        notes: 'Borderline high LDL cholesterol. Advised daily walk and dietary modifications.',
+        isAbnormal: true,
+        isFavorite: false,
+        fileSize: '210 KB',
+        referenceId: 'LPD1803262241',
+      ),
+      HealthReport(
+        id: 'rep8',
+        reportName: 'Urine Routine',
+        hospitalName: 'Apollo Hospitals',
+        department: 'Pathology',
+        doctorName: 'Dr. Priya Iyer',
+        reportDate: '05 Mar 2026',
+        bloodGroup: 'B+',
+        tags: ['Pathology', 'Routine'],
+        category: 'Others',
+        uploadedBy: 'Apollo Diagnostics',
+        fileType: 'PDF',
+        notes: 'Urine routine examination is unremarkable. No signs of infection.',
+        isAbnormal: false,
+        isFavorite: false,
+        fileSize: '140 KB',
+        referenceId: 'URN0503260074',
+      ),
+      HealthReport(
+        id: 'rep9',
+        reportName: 'CT Scan Abdomen',
+        hospitalName: 'Manipal Hospital',
+        department: 'Radiology',
+        doctorName: 'Dr. Vikram Sen',
+        reportDate: '22 Feb 2026',
+        bloodGroup: 'B+',
+        tags: ['Radiology', 'Abdominal'],
+        category: 'CT Scan',
+        uploadedBy: 'Manipal Imaging Center',
+        fileType: 'PDF',
+        notes: 'No abnormal mass or calcification seen in abdominal organs. Liver size is normal.',
+        isAbnormal: false,
+        isFavorite: false,
+        fileSize: '3.8 MB',
+        referenceId: 'CTS2202268809',
+      ),
+      HealthReport(
+        id: 'rep10',
+        reportName: 'Discharge Summary',
+        hospitalName: 'Apollo Hospitals',
+        department: 'Surgery',
+        doctorName: 'Dr. Rajesh Rao',
+        reportDate: '15 Jan 2026',
+        bloodGroup: 'B+',
+        tags: ['Surgery', 'Inpatient'],
+        category: 'Discharge Summary',
+        uploadedBy: 'Apollo Medical Records',
+        fileType: 'PDF',
+        notes: 'Discharged in stable condition post lap-cholecystectomy. Advised follow up in outpatient clinic in 10 days.',
+        isAbnormal: false,
+        isFavorite: false,
+        fileSize: '1.2 MB',
+        referenceId: 'DIS1501260421',
+      ),
+    ]);
+  }
+
+  void togglePrescriptionFavorite(String id) {
+    final idx = _prescriptions.indexWhere((p) => p.id == id);
+    if (idx != -1) {
+      _prescriptions[idx] = _prescriptions[idx].copyWith(
+        isFavorite: !_prescriptions[idx].isFavorite,
+      );
+      notifyListeners();
+    }
+  }
+
+  void toggleMedicineTakenToday(String prescriptionId, String medicineId) {
+    final rxIdx = _prescriptions.indexWhere((p) => p.id == prescriptionId);
+    if (rxIdx != -1) {
+      final medicines = List<PrescriptionMedicine>.from(_prescriptions[rxIdx].medicines);
+      final medIdx = medicines.indexWhere((m) => m.id == medicineId);
+      if (medIdx != -1) {
+        medicines[medIdx] = medicines[medIdx].copyWith(
+          isTakenToday: !medicines[medIdx].isTakenToday,
+        );
+        _prescriptions[rxIdx] = _prescriptions[rxIdx].copyWith(medicines: medicines);
+        notifyListeners();
+      }
+    }
+  }
+
+  void deletePrescription(String id) {
+    _prescriptions.removeWhere((p) => p.id == id);
+    notifyListeners();
+  }
+
+  void addPrescription(Prescription p) {
+    _prescriptions.insert(0, p);
+    notifyListeners();
+  }
+
+  void _seedPrescriptions() {
+    _prescriptions.addAll([
+      Prescription(
+        id: 'RX20JUL26A1B2',
+        doctorName: 'Dr. Rahul Sharma',
+        doctorPhoto: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=150',
+        qualification: 'MBBS, MD (Medicine)',
+        hospitalName: 'CityCare Hospital',
+        prescriptionDate: '20 Jul 2026',
+        validUntil: '27 Jul 2026',
+        diagnosis: 'Viral Fever',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med1',
+            name: 'Paracetamol 650mg',
+            strength: '650 mg',
+            morning: true,
+            afternoon: false,
+            night: true,
+            beforeFood: false,
+            afterFood: true,
+            duration: '5 Days',
+            quantity: '10 Tablets',
+            purpose: 'Used for fever and pain relief',
+            sideEffects: 'Drowsiness, Nausea',
+            storage: 'Store below 25°C. Do not expose to sunlight.',
+            alternatives: 'Crocin 650mg, Calpol 650mg',
+            isTakenToday: true,
+          ),
+          PrescriptionMedicine(
+            id: 'med2',
+            name: 'Vitamin C 500mg',
+            strength: '500 mg',
+            morning: false,
+            afternoon: true,
+            night: false,
+            beforeFood: false,
+            afterFood: true,
+            duration: '7 Days',
+            quantity: '7 Tablets',
+            purpose: 'Immunity booster and antioxidant support',
+            sideEffects: 'None reported when taken in recommended doses',
+            storage: 'Store in a cool, dry place.',
+            alternatives: 'Limcee, Celin',
+            isTakenToday: false,
+          ),
+          PrescriptionMedicine(
+            id: 'med3',
+            name: 'Pantoprazole 40mg',
+            strength: '40 mg',
+            morning: true,
+            afternoon: false,
+            night: false,
+            beforeFood: true,
+            afterFood: false,
+            duration: '5 Days',
+            quantity: '5 Tablets',
+            purpose: 'Acidity, heartburn and acid reflux prevention',
+            sideEffects: 'Headache, Mild diarrhea',
+            storage: 'Store in a cool dry place below 30°C.',
+            alternatives: 'Pan-40, Pantocid',
+            isTakenToday: true,
+          ),
+        ],
+        testsRecommended: ['CBC (Complete Blood Count)', 'Liver Function Test (LFT)'],
+        doctorNotes: 'Drink plenty of water. Take complete course. Avoid oily food.',
+        status: 'Active',
+      ),
+      Prescription(
+        id: 'RX05JUL26C3D4',
+        doctorName: 'Dr. Priya Mehta',
+        doctorPhoto: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?q=80&w=150',
+        qualification: 'MD (Internal Medicine)',
+        hospitalName: 'CityCare Hospital',
+        prescriptionDate: '05 Jul 2026',
+        validUntil: '12 Jul 2026',
+        diagnosis: 'Acidity',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med4',
+            name: 'Pantoprazole 40mg',
+            strength: '40 mg',
+            morning: true,
+            afternoon: false,
+            night: false,
+            beforeFood: true,
+            afterFood: false,
+            duration: '7 Days',
+            quantity: '7 Tablets',
+            purpose: 'Acidity prevention',
+            sideEffects: 'Headache',
+            storage: 'Store below 30°C',
+            alternatives: 'Pan-40',
+            isTakenToday: false,
+          ),
+        ],
+        testsRecommended: [],
+        doctorNotes: 'Avoid spicy food and carbonated drinks. Walk 15 mins after dinner.',
+        status: 'Active',
+      ),
+      Prescription(
+        id: 'RX28JUN26E5F6',
+        doctorName: 'Dr. Amit Verma',
+        doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
+        qualification: 'MBBS, MD (Pediatrics)',
+        hospitalName: 'Metro Clinics',
+        prescriptionDate: '28 Jun 2026',
+        validUntil: '03 Jul 2026',
+        diagnosis: 'Cold & Cough',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med5',
+            name: 'Cetirizine 10mg',
+            strength: '10 mg',
+            morning: false,
+            afternoon: false,
+            night: true,
+            beforeFood: false,
+            afterFood: true,
+            duration: '5 Days',
+            quantity: '5 Tablets',
+            purpose: 'Antiallergic for cold symptoms',
+            sideEffects: 'Drowsiness',
+            storage: 'Store at room temperature',
+            alternatives: 'Zyrtec',
+            isTakenToday: false,
+          ),
+        ],
+        testsRecommended: [],
+        doctorNotes: 'Keep warm, take steam inhalation twice a day.',
+        status: 'Completed',
+      ),
+      Prescription(
+        id: 'RX15JUN26G7H8',
+        doctorName: 'Dr. Neha Kapoor',
+        doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=150',
+        qualification: 'DLO, ENT Specialist',
+        hospitalName: 'Lotus ENT Hospital',
+        prescriptionDate: '15 Jun 2026',
+        validUntil: '18 Jun 2026',
+        diagnosis: 'Allergy',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med6',
+            name: 'Allegra 120mg',
+            strength: '120 mg',
+            morning: true,
+            afternoon: false,
+            night: false,
+            beforeFood: false,
+            afterFood: true,
+            duration: '3 Days',
+            quantity: '3 Tablets',
+            purpose: 'Relief from seasonal allergies',
+            sideEffects: 'Dry mouth',
+            storage: 'Store below 25°C',
+            alternatives: 'Telfast',
+            isTakenToday: false,
+          ),
+        ],
+        testsRecommended: [],
+        doctorNotes: 'Avoid exposure to dust and pollen. Wear a mask outdoors.',
+        status: 'Completed',
+      ),
+      Prescription(
+        id: 'RX30MAY26I9J0',
+        doctorName: 'Dr. Sandeep Jain',
+        doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
+        qualification: 'MS (Orthopedics)',
+        hospitalName: 'Bone & Joint Clinic',
+        prescriptionDate: '30 May 2026',
+        validUntil: '09 Jun 2026',
+        diagnosis: 'Back Pain',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med7',
+            name: 'Aceclofenac 100mg',
+            strength: '100 mg',
+            morning: true,
+            afternoon: false,
+            night: true,
+            beforeFood: false,
+            afterFood: true,
+            duration: '10 Days',
+            quantity: '20 Tablets',
+            purpose: 'Pain relief and anti-inflammatory',
+            sideEffects: 'Gastric irritation',
+            storage: 'Keep away from moisture',
+            alternatives: 'Zerodol-100',
+            isTakenToday: false,
+          ),
+        ],
+        testsRecommended: [],
+        doctorNotes: 'Do not lift heavy weights. Apply warm compress.',
+        status: 'Completed',
+      ),
+    ]);
   }
 
   @override

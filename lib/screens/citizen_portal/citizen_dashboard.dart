@@ -22,6 +22,8 @@ import 'scanned_profile_screen.dart';
 import '../onboarding_screen.dart' hide HeartEcgPainter;
 import 'submit_report_screen.dart';
 import 'previous_reports_screen.dart';
+import 'medical_reports/my_reports_screen.dart';
+import 'prescriptions/prescriptions_dashboard_screen.dart';
 
 class CitizenDashboard extends StatefulWidget {
   const CitizenDashboard({Key? key}) : super(key: key);
@@ -36,11 +38,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   late AnimationController _scannerController;
   late MobileScannerController _cameraController;
 
-  // Learn tab state variables
-  int _selectedLearnCategoryIndex = 0;
-  int _featuredActiveIndex = 0;
-  bool _isLearnGridView = true;
-  String _selectedLearnLanguage = 'English';
+
 
   // Form Key & Controllers for editable Health Profile
   final _profileFormKey = GlobalKey<FormState>();
@@ -309,34 +307,40 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     final provider = Provider.of<SwasthyaTapProvider>(context);
     final citizen = provider.currentCitizen;
 
-    return Scaffold(
-      backgroundColor: AppTheme.lightBg,
-      body: Stack(
-        children: [
-          // Main Body Content
-          SafeArea(
-            bottom: false,
-            top: _currentIndex != 1, // Full screen for scanner
-            child: IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildHomeTab(context, provider, citizen),
-                _buildScanTab(context, provider, citizen),
-                _buildHealthProfileTab(context, provider, citizen),
-                _buildLearnTab(context, provider, citizen),
-                _buildMoreTab(context, provider, citizen),
-              ],
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        _onTabSelected(0);
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.lightBg,
+        body: Stack(
+          children: [
+            // Main Body Content
+            SafeArea(
+              bottom: false,
+              top: _currentIndex != 1, // Full screen for scanner
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _buildHomeTab(context, provider, citizen),
+                  _buildScanTab(context, provider, citizen),
+                  _buildHealthProfileTab(context, provider, citizen),
+                  _buildMoreTab(context, provider, citizen),
+                ],
+              ),
             ),
-          ),
 
-          // Custom Frosted Glass Bottom Navigation Bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomNavigationBar(provider),
-          ),
-        ],
+            // Custom Frosted Glass Bottom Navigation Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomNavigationBar(provider),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -366,10 +370,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
 
           // Health Profile Ring
           _buildHealthProfileProgress(context, provider),
-          const SizedBox(height: 26),
-
-          // Educational Videos
-          _buildEducationalVideos(context, provider),
           const SizedBox(height: 26),
 
           // Bottom Split Cards: Report Health Issue & Blood Donation
@@ -432,7 +432,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
         Stack(
           children: [
             IconButton(
-              onPressed: () => _onTabSelected(4),
+              onPressed: () => _onTabSelected(3),
               icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textPrimary, size: 26),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -460,7 +460,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
         const SizedBox(width: 10),
         // Settings Icon
         IconButton(
-          onPressed: () => _onTabSelected(4),
+          onPressed: () => _onTabSelected(3),
           icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary, size: 26),
           style: IconButton.styleFrom(
             backgroundColor: Colors.white,
@@ -552,6 +552,8 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     final actions = [
       {'icon': Icons.phone_android_rounded, 'label': _t('tap_nfc', provider.selectedLanguage), 'color': const Color(0xFF0F766E)},
       {'icon': Icons.qr_code_scanner_rounded, 'label': _t('scan_qr', provider.selectedLanguage), 'color': const Color(0xFFF59E0B)},
+      {'icon': Icons.assignment_rounded, 'label': 'My Reports', 'color': AppTheme.accentTeal},
+      {'icon': Icons.description_rounded, 'label': 'Prescriptions', 'color': const Color(0xFF0F8B8D)},
       {'icon': Icons.bloodtype_outlined, 'label': _t('blood_network', provider.selectedLanguage), 'color': const Color(0xFFDC2626)},
       {'icon': Icons.local_hospital_outlined, 'label': _t('nearby_centers', provider.selectedLanguage), 'color': const Color(0xFF1E40AF)},
       {'icon': Icons.notifications_active_outlined, 'label': _t('emergency_alert', provider.selectedLanguage), 'color': const Color(0xFFF97316)},
@@ -581,12 +583,38 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        builder: (_) => MyReportsScreen(
+                          onTabSelected: (idx) {
+                            setState(() {
+                              _currentIndex = idx;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  } else if (index == 3) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PrescriptionsDashboardScreen(
+                          onTabSelected: (idx) {
+                            setState(() {
+                              _currentIndex = idx;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  } else if (index == 4) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
                         builder: (_) => const NearbyHealthCentersScreen(
                           initialFilter: 'Blood Banks',
                         ),
                       ),
                     );
-                  } else if (index == 3) {
+                  } else if (index == 5) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -595,6 +623,8 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                         ),
                       ),
                     );
+                  } else if (index == 6) {
+                    _showEmergencyAlerts(context, provider);
                   }
                 },
                 child: Container(
@@ -915,132 +945,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
-  Widget _buildEducationalVideos(BuildContext context, SwasthyaTapProvider provider) {
-    final videos = [
-      {'title': TranslationService.t(context, 'learn_v3_title'), 'duration': '4:35', 'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=300&h=180&q=80'},
-      {'title': TranslationService.t(context, 'learn_v4_title'), 'duration': '3:12', 'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=300&h=180&q=80'},
-      {'title': TranslationService.t(context, 'learn_v2_title'), 'duration': '3:45', 'image': 'https://images.unsplash.com/photo-1576086213369-97a306d36557?fit=crop&w=300&h=180&q=80'},
-    ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _t('educational_videos', provider.selectedLanguage),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            GestureDetector(
-              onTap: () => _onTabSelected(3),
-              child: Row(
-                children: [
-                  Text(
-                    _t('see_all', provider.selectedLanguage),
-                    style: const TextStyle(color: AppTheme.accentTeal, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.chevron_right, size: 16, color: AppTheme.accentTeal),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: videos.length,
-            clipBehavior: Clip.none,
-            itemBuilder: (context, index) {
-              final video = videos[index];
-              return Container(
-                width: 170,
-                margin: const EdgeInsets.only(right: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderColor),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.015),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Thumbnail
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: Image.network(
-                                video['image']!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, e, s) => Container(color: AppTheme.borderColor),
-                              ),
-                            ),
-                            // Play Overlay Icon
-                            Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.5),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                              ),
-                            ),
-                            // Duration
-                            Positioned(
-                              right: 8,
-                              bottom: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.7),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  video['duration']!,
-                                  style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Title
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        child: Text(
-                          video['title']!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildBottomCards(BuildContext context, SwasthyaTapProvider provider) {
     return Row(
@@ -1537,7 +1442,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(width: 32),
-                    // Temp Data Button
+                    // Temp Profile Button
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -1556,10 +1461,10 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1.5),
                             ),
-                            child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 20),
+                            child: const Icon(Icons.person_pin_rounded, color: Colors.white, size: 20),
                           ),
                           const SizedBox(height: 6),
-                          Text(TranslationService.t(context, 'temp_data'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(TranslationService.t(context, 'temp_profile'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -2838,848 +2743,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   }
 
 
-  // ─── 4. Learn Tab (Educational Videos) ─────────────────────────────────────
-  Widget _buildLearnTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
-    final categories = ['All', 'Emergency', 'Dengue/Malaria', 'First Aid', 'Blood Donation'];
-    final categoryDisplayNames = {
-      'All': TranslationService.t(context, 'all'),
-      'Emergency': TranslationService.t(context, 'emergency'),
-      'Dengue/Malaria': TranslationService.t(context, 'dengue_prevention'),
-      'First Aid': TranslationService.t(context, 'first_aid'),
-      'Blood Donation': TranslationService.t(context, 'blood_donation'),
-    };
-    
-    final featuredVideos = [
-      {
-        'title': TranslationService.t(context, 'learn_f1_title'),
-        'subtitle': TranslationService.t(context, 'learn_f1_sub'),
-        'duration': '2:45',
-        'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=600&h=300&q=80',
-      },
-      {
-        'title': TranslationService.t(context, 'learn_f2_title'),
-        'subtitle': TranslationService.t(context, 'learn_f2_sub'),
-        'duration': '1:30',
-        'image': 'https://images.unsplash.com/photo-1518364538800-6bcb3f25da49?fit=crop&w=600&h=300&q=80',
-      },
-      {
-        'title': TranslationService.t(context, 'learn_f3_title'),
-        'subtitle': TranslationService.t(context, 'learn_f3_sub'),
-        'duration': '3:15',
-        'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=600&h=300&q=80',
-      },
-    ];
-
-    final allVideos = [
-      {
-        'title': TranslationService.t(context, 'learn_v1_title'),
-        'duration': '3:12',
-        'category': 'Emergency',
-        'views': '125K',
-        'image': 'https://images.unsplash.com/photo-1518364538800-6bcb3f25da49?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-      {
-        'title': TranslationService.t(context, 'learn_v2_title'),
-        'duration': '2:36',
-        'category': 'Dengue/Malaria',
-        'views': '98K',
-        'image': 'https://images.unsplash.com/photo-1576086213369-97a306d36557?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-      {
-        'title': TranslationService.t(context, 'learn_v3_title'),
-        'duration': '5:08',
-        'category': 'First Aid',
-        'views': '210K',
-        'image': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-      {
-        'title': TranslationService.t(context, 'learn_v4_title'),
-        'duration': '4:22',
-        'category': 'Blood Donation',
-        'views': '87K',
-        'image': 'https://images.unsplash.com/photo-1615461066841-6116ecdccd04?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-      {
-        'title': TranslationService.t(context, 'learn_v5_title'),
-        'duration': '3:45',
-        'category': 'Emergency',
-        'views': '66K',
-        'image': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-      {
-        'title': TranslationService.t(context, 'learn_v6_title'),
-        'duration': '2:50',
-        'category': 'Dengue/Malaria',
-        'views': '54K',
-        'image': 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?fit=crop&w=350&h=220&q=80',
-        'verified': true,
-      },
-    ];
-
-    // Filter videos based on selection
-    final selectedCategory = categories[_selectedLearnCategoryIndex];
-    final filteredVideos = selectedCategory == 'All'
-        ? allVideos
-        : allVideos.where((v) => v['category'] == selectedCategory).toList();
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Header Bar: Back Arrow, Education Cap + Heart Icon, Title & Subtitle, Languages Dropdown, Search Icon
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
-                onPressed: () {
-                  setState(() {
-                    _currentIndex = 0; // Go back to Home
-                  });
-                },
-              ),
-              const SizedBox(width: 4),
-              CustomPaint(
-                size: const Size(36, 36),
-                painter: HealthEducationLogoPainter(),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      TranslationService.t(context, 'health_education'),
-                      style: GoogleFonts.outfit(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF0F172A),
-                      ),
-                    ),
-                    Text(
-                      TranslationService.t(context, 'health_edu_sub'),
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Languages button
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded, size: 14, color: Color(0xFF64748B)),
-                    const SizedBox(width: 4),
-                    Text(
-                      TranslationService.t(context, 'languages_btn'),
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              
-              // Search icon button
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // 2. Categories Horizontal Scroll Bar + Filter Button
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final isSelected = _selectedLearnCategoryIndex == index;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedLearnCategoryIndex = index;
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF0D9488) : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? Colors.transparent : const Color(0xFFE2E8F0),
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              categoryDisplayNames[categories[index]] ?? categories[index],
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : const Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // 3. Horizontal Featured Video Card Slider
-          SizedBox(
-            height: 190,
-            child: PageView.builder(
-              itemCount: featuredVideos.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _featuredActiveIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                final fVideo = featuredVideos[index];
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    image: DecorationImage(
-                      image: NetworkImage(fVideo['image']!),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Dark Overlay for text legibility
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.1),
-                                Colors.black.withOpacity(0.7),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Featured label
-                      Positioned(
-                        top: 14,
-                        left: 14,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            TranslationService.t(context, 'featured_label'),
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Center Play Button
-                      Center(
-                        child: Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Colors.white.withOpacity(0.9),
-                          size: 48,
-                        ),
-                      ),
-
-                      // Text and details at bottom
-                      Positioned(
-                        left: 16,
-                        bottom: 16,
-                        right: 16,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fVideo['title']!,
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              fVideo['subtitle']!,
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                color: Colors.white.withOpacity(0.8),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Duration overlay
-                      Positioned(
-                        right: 14,
-                        bottom: 14,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.65),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            fVideo['duration']!,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      
-                      // Small download icon on featured
-                      Positioned(
-                        right: 50,
-                        bottom: 12,
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          child: const Icon(Icons.download_rounded, size: 12, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Featured Dot Indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(featuredVideos.length, (index) {
-              final isActive = _featuredActiveIndex == index;
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: isActive ? 16 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFF0D9488) : const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 20),
-
-          // 4. View / Format Selector Row (Dropdown language + Grid/List toggles)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // English dropdown card + languages badge
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.translate_rounded, size: 12, color: Color(0xFF64748B)),
-                        const SizedBox(width: 6),
-                        Text(
-                          _selectedLearnLanguage,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF0F172A)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Row(
-                    children: [
-                      const Icon(Icons.people_outline_rounded, size: 14, color: Color(0xFF0D9488)),
-                      const SizedBox(width: 4),
-                      Text(
-                        TranslationService.t(context, 'languages_avail'),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              // Grid/List toggle icons
-              Row(
-                children: [
-                  // Grid View icon
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isLearnGridView = true;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: _isLearnGridView ? const Color(0xFFE6F4F1) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.grid_view_rounded,
-                        size: 16,
-                        color: _isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-
-                  // List View icon
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isLearnGridView = false;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: !_isLearnGridView ? const Color(0xFFE6F4F1) : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: !_isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.view_list_rounded,
-                        size: 16,
-                        color: !_isLearnGridView ? const Color(0xFF0D9488) : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // 5. Video Content Grid or List Layout
-          _isLearnGridView
-              ? GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredVideos.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 0.81,
-                  ),
-                  itemBuilder: (context, index) {
-                    final video = filteredVideos[index];
-                    return _buildGridVideoCard(video);
-                  },
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredVideos.length,
-                  itemBuilder: (context, index) {
-                    final video = filteredVideos[index];
-                    return _buildListVideoCard(video);
-                  },
-                ),
-
-        ],
-      ),
-    );
-  }
-
-  // Grid Video Card Item Helper
-  Widget _buildGridVideoCard(Map<String, dynamic> video) {
-    Color tagColor = const Color(0xFF0F766E);
-    Color tagBg = const Color(0xFFCCFBF1);
-    
-    switch (video['category']) {
-      case 'Emergency':
-        tagColor = const Color(0xFFEF4444);
-        tagBg = const Color(0xFFFEE2E2);
-        break;
-      case 'Dengue/Malaria':
-        tagColor = const Color(0xFF059669);
-        tagBg = const Color(0xFFD1FAE5);
-        break;
-      case 'First Aid':
-        tagColor = const Color(0xFF7C3AED);
-        tagBg = const Color(0xFFF3E8FF);
-        break;
-      case 'Blood Donation':
-        tagColor = const Color(0xFFE11D48);
-        tagBg = const Color(0xFFFFE4E6);
-        break;
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.015),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Thumbnail portion
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  video['image']!,
-                  height: 95,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, e, s) => Container(height: 95, color: const Color(0xFFF1F5F9)),
-                ),
-              ),
-              
-              // Play button overlay
-              Positioned.fill(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
-                  ),
-                ),
-              ),
-
-              // Top right check badge
-              if (video['verified'] == true)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
-                  ),
-                ),
-
-              // Duration bottom right
-              Positioned(
-                right: 6,
-                bottom: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    video['duration']!,
-                    style: GoogleFonts.inter(
-                      fontSize: 8.5,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          // Text Details
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    video['title']!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0F172A),
-                      height: 1.25,
-                    ),
-                  ),
-                  
-                  // Label tags & options row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: tagBg,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                video['category']!,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 7.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: tagColor,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '🇮🇳 ${video['views']} views',
-                              style: GoogleFonts.inter(
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.more_vert, size: 14, color: Color(0xFF64748B)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // List Video Card Item Helper
-  Widget _buildListVideoCard(Map<String, dynamic> video) {
-    Color tagColor = const Color(0xFF0F766E);
-    Color tagBg = const Color(0xFFCCFBF1);
-    
-    switch (video['category']) {
-      case 'Emergency':
-        tagColor = const Color(0xFFEF4444);
-        tagBg = const Color(0xFFFEE2E2);
-        break;
-      case 'Dengue/Malaria':
-        tagColor = const Color(0xFF059669);
-        tagBg = const Color(0xFFD1FAE5);
-        break;
-      case 'First Aid':
-        tagColor = const Color(0xFF7C3AED);
-        tagBg = const Color(0xFFF3E8FF);
-        break;
-      case 'Blood Donation':
-        tagColor = const Color(0xFFE11D48);
-        tagBg = const Color(0xFFFFE4E6);
-        break;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          // Thumbnail portion
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
-                child: Image.network(
-                  video['image']!,
-                  height: 84,
-                  width: 120,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, e, s) => Container(height: 84, width: 120, color: const Color(0xFFF1F5F9)),
-                ),
-              ),
-              
-              // Play button overlay
-              Positioned.fill(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
-                  ),
-                ),
-              ),
-
-              // Duration
-              Positioned(
-                right: 6,
-                bottom: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    video['duration']!,
-                    style: GoogleFonts.inter(
-                      fontSize: 8.5,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Text details
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: tagBg,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          video['category']!,
-                          style: GoogleFonts.inter(
-                            fontSize: 7.5,
-                            fontWeight: FontWeight.bold,
-                            color: tagColor,
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.more_vert, size: 14, color: Color(0xFF64748B)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    video['title']!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0F172A),
-                      height: 1.25,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '🇮🇳 ${video['views']} views',
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── 5. More Tab (Settings Screen) ─────────────────────────────────────────
   Widget _buildMoreTab(BuildContext context, SwasthyaTapProvider provider, citizen) {
     return SingleChildScrollView(
@@ -3788,6 +2851,31 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
               TranslationService.t(context, 'linked_nfc_cards'),
               '1 Active Card',
               onTap: () => _showLinkedNfcCards(context, provider),
+            ),
+            _buildSettingsItem(
+              Icons.assignment_rounded,
+              'My Medical Reports',
+              'Manage your clinical documents & tests',
+              onTap: () => _showPreviousReportsSheet(context, provider),
+            ),
+            _buildSettingsItem(
+              Icons.description_rounded,
+              'My Digital Prescriptions',
+              'View secure digital prescriptions & schedules',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PrescriptionsDashboardScreen(
+                      onTabSelected: (idx) {
+                        setState(() {
+                          _currentIndex = idx;
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             _buildSettingsItem(
               Icons.people_outline_rounded,
@@ -4747,7 +3835,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       {'icon': Icons.home_filled, 'label': _t('nav_home', provider.selectedLanguage)},
       {'icon': Icons.qr_code_scanner_rounded, 'label': _t('nav_scan', provider.selectedLanguage)},
       {'icon': Icons.person_rounded, 'label': _t('nav_profile', provider.selectedLanguage)},
-      {'icon': Icons.school_rounded, 'label': _t('nav_learn', provider.selectedLanguage)},
       {'icon': Icons.more_horiz_rounded, 'label': _t('nav_more', provider.selectedLanguage)},
     ];
 
@@ -4979,7 +4066,13 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const PreviousReportsScreen(),
+        builder: (context) => MyReportsScreen(
+          onTabSelected: (idx) {
+            setState(() {
+              _currentIndex = idx;
+            });
+          },
+        ),
       ),
     );
   }

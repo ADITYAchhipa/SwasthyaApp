@@ -539,6 +539,8 @@ class ApiService {
       phoneNumber: json['phoneNumber'] as String? ?? '',
       email: json['email'] as String? ?? '',
       profileImage: json['profileImage'] as String?,
+      medicalReports: json['medicalReports'] as List<dynamic>? ?? [],
+      receipts: json['receipts'] as List<dynamic>? ?? [],
     );
   }
 
@@ -612,5 +614,58 @@ class ApiService {
         'selectedLanguage': 'English',
         'profileCompleteness': 75,
         'profileImage': null,
+        'medicalReports': [
+          {
+            'title_key': 'cbc_report',
+            'issuer_key': 'lab_name_city',
+            'date': '18 Jun 2026',
+            'status_key': 'verified_report',
+            'doctor_key': 'dr_amit_shah',
+          },
+          {
+            'title_key': 'lipid_profile',
+            'issuer_key': 'lab_name_apollo',
+            'date': '10 May 2026',
+            'status_key': 'verified_report',
+            'doctor_key': 'dr_patel',
+          },
+          {
+            'title_key': 'thyroid_report',
+            'issuer_key': 'lab_name_city',
+            'date': '24 Apr 2026',
+            'status_key': 'verified_report',
+            'doctor_key': 'dr_singh',
+          },
+          {
+            'title_key': 'chest_xray',
+            'issuer_key': 'lab_name_apollo',
+            'date': '15 Feb 2026',
+            'status_key': 'verified_report',
+            'doctor_key': 'dr_amit_shah',
+          }
+        ],
+        'receipts': [
+          {
+            'title_key': 'opd_consultation_receipt',
+            'issuer_key': 'dr_amit_shah',
+            'date': '20 Jun 2026',
+            'amount': '₹500',
+            'status_key': 'paid',
+          },
+          {
+            'title_key': 'pharmacy_invoice',
+            'issuer_key': 'apollo_pharmacy',
+            'date': '20 Jun 2026',
+            'amount': '₹1,240',
+            'status_key': 'paid',
+          },
+          {
+            'title_key': 'diagnostics_invoice',
+            'issuer_key': 'city_labs',
+            'date': '12 May 2026',
+            'amount': '₹1,500',
+            'status_key': 'paid',
+          }
+        ],
       };
 }

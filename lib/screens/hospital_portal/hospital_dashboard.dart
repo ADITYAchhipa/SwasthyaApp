@@ -7,6 +7,9 @@ import '../../widgets/glass_card.dart';
 import '../../models/models.dart';
 import 'declare_blood_emergency.dart';
 import 'emergency_blood_map.dart';
+import '../../services/api_service.dart';
+import '../onboarding_screen.dart';
+import '../../utils/translation_service.dart';
 
 class HospitalDashboard extends StatefulWidget {
   const HospitalDashboard({Key? key}) : super(key: key);
@@ -16,6 +19,8 @@ class HospitalDashboard extends StatefulWidget {
 }
 
 class _HospitalDashboardState extends State<HospitalDashboard> {
+  String _t(String key) => TranslationService.t(context, key);
+
   final _searchController = TextEditingController();
   MedicalProfile? _searchedProfile;
   bool _hasSearched = false;
@@ -60,7 +65,45 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     return Scaffold(
       backgroundColor: AppTheme.lightBg,
       appBar: AppBar(
-        title: const Text('Hospital & ER Portal'),
+        title: Text(_t('hospital_er_portal')),
+        leading: IconButton(
+          icon: const Icon(Icons.logout_rounded, color: AppTheme.accentRed),
+          tooltip: 'Sign Out',
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Sign Out'),
+                content: const Text('Are you sure you want to sign out from the hospital portal?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text(
+                      'Sign Out',
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true && mounted) {
+              ApiService.clearToken();
+              Navigator.of(context).pushAndRemoveUntil(
+                PageRouteBuilder(
+                  transitionDuration: const Duration(milliseconds: 500),
+                  pageBuilder: (context, animation, _) => const OnboardingScreen(),
+                  transitionsBuilder: (context, animation, _, child) =>
+                      FadeTransition(opacity: animation, child: child),
+                ),
+                (route) => false,
+              );
+            }
+          },
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -68,7 +111,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
               onPressed: () => Navigator.push(
                   context, MaterialPageRoute(builder: (_) => const DeclareBloodEmergencyScreen())),
               icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-              label: const Text('Declare Alert', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+              label: Text(_t('declare_alert'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accentRed,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -85,10 +128,10 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Search section
-            Text('Patient Lookup', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(_t('patient_lookup'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text('Scan NFC card or enter 6-digit patient code',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Text(_t('scan_or_enter_code'),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
             const SizedBox(height: 12),
             _searchBox(provider),
             const SizedBox(height: 20),
@@ -99,11 +142,11 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Emergency Record', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.accentTeal)),
+                    Text(_t('emergency_record'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.accentTeal)),
                     TextButton.icon(
                       onPressed: () => setState(() { _searchedProfile = null; _hasSearched = false; _searchController.clear(); }),
                       icon: const Icon(Icons.close, size: 14, color: AppTheme.accentRed),
-                      label: const Text('Close', style: TextStyle(color: AppTheme.accentRed, fontSize: 13)),
+                      label: Text(_t('close'), style: const TextStyle(color: AppTheme.accentRed, fontSize: 13)),
                     ),
                   ],
                 ).animate().fade(),
@@ -117,11 +160,11 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.accentRed.withOpacity(0.2)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.search_off_rounded, color: AppTheme.accentRed, size: 18),
-                      SizedBox(width: 10),
-                      Text('No patient record found for that code.', style: TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.w600)),
+                      const Icon(Icons.search_off_rounded, color: AppTheme.accentRed, size: 18),
+                      const SizedBox(width: 10),
+                      Text(_t('no_patient_found'), style: const TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ).animate().fade(),
@@ -135,7 +178,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Active Blood Alerts', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(_t('active_blood_alerts'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
                     Text('${provider.bloodRequests.length} active broadcasts', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                   ],
                 ),
@@ -184,7 +227,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
               ),
-              child: const Text('Search', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Text(_t('search'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             ),
           ),
         ],
@@ -472,10 +515,10 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                             const SizedBox(width: 4),
                             Text('${req.radiusKm.toStringAsFixed(1)} km radius', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                           ]),
-                          const Row(children: [
-                            Text('View Radar Map', style: TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold, fontSize: 12)),
-                            SizedBox(width: 3),
-                            Icon(Icons.arrow_forward_ios, size: 10, color: AppTheme.accentTeal),
+                          Row(children: [
+                            Text(_t('view_radar_map'), style: const TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.bold, fontSize: 12)),
+                            const SizedBox(width: 3),
+                            const Icon(Icons.arrow_forward_ios, size: 10, color: AppTheme.accentTeal),
                           ]),
                         ],
                       ),

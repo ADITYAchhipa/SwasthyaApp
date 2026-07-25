@@ -383,7 +383,11 @@ keys = [
         'Malayalam': 'NFC ടാപ്പ് ചെയ്യുക', 'Punjabi': 'NFC ਟੈਪ ਕਰੋ', 'Odia': 'NFC ଟ୍ୟାପ୍', 'Urdu': 'NFC ٹیپ کریں'
     }),
     ('scan_qr', {
-        'English': 'Scan QR', 'Hindi': 'क्यूआर स्कैन', 'Bengali': 'কিউআর স্ক্যান', 'Telugu': 'QR స్కాన�    ('card_portable_desc', {
+        'English': 'Scan QR', 'Hindi': 'क्यूआर स्कैन', 'Bengali': 'কিউআর স্ক্যান', 'Telugu': 'QR స్కానర్',
+        'Tamil': 'QR ஸ்கேன்', 'Marathi': 'क्यूआर स्कॅन', 'Gujarati': 'ક્યુઆર સ્કેન', 'Kannada': 'ಕ್ಯೂಆರ್ ಸ್ಕ್ಯಾನ್',
+        'Malayalam': 'ക്യുആർ സ്കാൻ', 'Punjabi': 'ਕਿਊਆਰ ਸਕੈਨ', 'Odia': 'କ୍ୟୁଆର୍ ସ୍କାନ୍', 'Urdu': 'کیو آر اسکین'
+    }),
+    ('card_portable_desc', {
         'English': 'Easy to carry. Always with you.', 'Hindi': 'ले जाने में आसान। एनएफसी सक्षम',
         'Bengali': 'সহজে বহনযোগ্য। এনএফসি সক্ষম', 'Telugu': 'తీసుకెళ్లడం సుလభం. NFC సదుపాయం',
         'Tamil': 'எளிதாக எடுத்துச் செல்லலாம். NFC வசதியுடன்', 'Marathi': 'वाहून नेण्यास सोपे. NFC सक्षम',
@@ -399,8 +403,10 @@ keys = [
     }),
     ('members_added', {
         'English': 'members added'
-    })
-]thi': 'रक्त नेटवर्क',
+    }),
+    ('blood_network', {
+        'English': 'Blood Network', 'Hindi': 'रक्त नेटवर्क', 'Bengali': 'রক্ত নেটওয়ার্ক', 'Telugu': 'బ్లడ్ నెట్‌వర్క్', 'Tamil': 'இரத்த நெட்வொர்க்',
+        'Marathi': 'रक्त नेटवर्क',
         'Gujarati': 'બ્લડ નેટવર્ક', 'Kannada': 'ರಕ್ತದ ನೆಟ್‌ವರ್ಕ್', 'Malayalam': 'ബ്ലഡ് നെറ്റ്‌വർക്ക്',
         'Punjabi': 'ਖੂਨ ਦਾ ਨੈੱਟਵਰਕ', 'Odia': 'ରକ୍ତ ନେଟୱର୍କ', 'Urdu': 'بلڈ نیٹ ورک'
     }),
@@ -745,6 +751,75 @@ keys = [
         'Gujarati': 'લઈ જવામાં સરળ. NFC સક્ષમ', 'Kannada': 'ಸಾಗಿಸಲು ಸುಲಭ. NFC ಸಕ್ರಿಯ',
         'Malayalam': 'കൊണ്ടുനടക്കാൻ എളുപ്പം. എൻഎഫ്സി സൗകര്യം', 'Punjabi': 'ਲਿਜਾਣ ਵਿੱਚ ਅਸਾਨ। NFC ਸਮਰੱਥ',
         'Odia': 'ବୋହିବା ସହଜ | NFC ସକ୍ଷમ', 'Urdu': 'لے جانے میں آسان۔ NFC فعال'
+    }),
+    ('medical_reports_sec', {
+        'English': '6. Medical Reports'
+    }),
+    ('receipts_sec', {
+        'English': '7. Receipts & Prescriptions'
+    }),
+    ('receipts_label', {
+        'English': 'Receipts'
+    }),
+    ('reports_label', {
+        'English': 'Reports'
+    }),
+    ('temp_profile', {
+        'English': 'Temp Profile'
+    }),
+    ('opd_consultation_receipt', {
+        'English': 'OPD Consultation Receipt'
+    }),
+    ('pharmacy_billing_rx', {
+        'English': 'Pharmacy Billing & Rx'
+    }),
+    ('diagnostics_invoice', {
+        'English': 'Diagnostics Invoice'
+    }),
+    ('dr_amit_shah', {
+        'English': 'Dr. Amit Shah'
+    }),
+    ('apollo_pharmacy', {
+        'English': 'Apollo Pharmacy'
+    }),
+    ('city_labs', {
+        'English': 'City Labs'
+    }),
+    ('paid', {
+        'English': 'Paid'
+    }),
+    ('billing_history_title', {
+        'English': 'Billing & Receipts History'
+    }),
+    ('invoices_paid_offline', {
+        'English': '3 Invoices Paid Offline'
+    }),
+    ('lipid_profile', {
+        'English': 'Lipid Profile Test'
+    }),
+    ('thyroid_report', {
+        'English': 'Thyroid Profile Test'
+    }),
+    ('urine_analysis', {
+        'English': 'Routine Urine Analysis'
+    }),
+    ('chest_xray', {
+        'English': 'Chest X-Ray'
+    }),
+    ('lab_name_city', {
+        'English': 'City Diagnostics'
+    }),
+    ('lab_name_apollo', {
+        'English': 'Apollo Diagnostics'
+    }),
+    ('dr_patel', {
+        'English': 'Dr. Rajesh Patel'
+    }),
+    ('dr_singh', {
+        'English': 'Dr. Sunita Singh'
+    }),
+    ('verified_report', {
+        'English': 'Verified Report'
     })
 ]
 
@@ -761,6 +836,7 @@ if os.path.exists(CACHE_FILE):
         print(f"Failed to load cache: {e}")
 
 LANG_CODES = {
+    'Hindi': 'hi',
     'Bengali': 'bn',
     'Telugu': 'te',
     'Tamil': 'ta',
@@ -780,7 +856,8 @@ for lang in languages:
 # Set the pre-translated keys
 for k, val_dict in keys:
     for lang in languages:
-        translations_map[lang][k] = val_dict.get(lang, val_dict['English'])
+        if lang == 'English' or lang in val_dict:
+            translations_map[lang][k] = val_dict.get(lang, val_dict['English'])
 
 # For all other keys (mostly technical / clinical profile detail labels), we can copy or provide fallback:
 # Let's read from the actual file
@@ -789,20 +866,40 @@ with open('/home/aditya/clones/Card/lib/utils/translation_service.dart', 'r') as
     content = f.read()
 
 # Match English dict
-eng_match = re.search(r"\'English\':\s*\{([\s\S]+?)\},\s*\'Hindi\'", content)
-hindi_match = re.search(r"\'Hindi\':\s*\{([\s\S]+?)\}\s*\}", content)
+eng_match = re.search(r"\'English\':\s*\{([^{}]+)\}", content)
 
 eng_pairs = {}
+for k, val_dict in keys:
+    eng_pairs[k] = val_dict['English']
+
 if eng_match:
     pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", eng_match.group(1))
     for k, v in pairs:
         eng_pairs[k] = v
 
+# Load initial commit's Hindi pairs to avoid Urdu contamination
+import subprocess
 hindi_pairs = {}
+try:
+    old_content = subprocess.check_output(['git', 'show', '84874ac:lib/utils/translation_service.dart']).decode('utf-8', errors='ignore')
+    old_hindi_match = re.search(r"\'Hindi\':\s*\{([^{}]+)\}", old_content)
+    if old_hindi_match:
+        pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", old_hindi_match.group(1))
+        for k, v in pairs:
+            hindi_pairs[k] = v
+except Exception as e:
+    print("Warning: failed to load initial commit Hindi translations:", e)
+
+# Also load from current translation file, but filter out Urdu (Arabic script)
+def is_arabic(text):
+    return bool(re.search(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]', text))
+
+hindi_match = re.search(r"\'Hindi\':\s*\{([^{}]+)\}", content)
 if hindi_match:
     pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", hindi_match.group(1))
     for k, v in pairs:
-        hindi_pairs[k] = v
+        if not is_arabic(v) and v != eng_pairs.get(k):
+            hindi_pairs[k] = v
 
 # Populate eng_pairs and hindi_pairs for all keys
 for k, v in eng_pairs.items():
@@ -817,8 +914,10 @@ for k, v in hindi_pairs.items():
 def get_translated_value(key, eng_val, lang):
     if lang == 'English':
         return eng_val
-    if lang == 'Hindi':
-        return hindi_pairs.get(key, eng_val)
+    if lang == 'Hindi' and key in hindi_pairs:
+        val = hindi_pairs[key]
+        if not is_arabic(val):
+            return val
         
     # Translations for other 10 languages
     translations = {

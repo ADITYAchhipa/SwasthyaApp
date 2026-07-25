@@ -63,9 +63,25 @@ const CitizenSchema = new mongoose.Schema(
     // Medical Reports
     medicalReports: [
       {
-        name: { type: String, required: true },
-        url: { type: String, required: true },
+        name: { type: String },
+        url: { type: String },
         uploadedAt: { type: Date, default: Date.now },
+        title_key: { type: String },
+        issuer_key: { type: String },
+        date: { type: String },
+        status_key: { type: String },
+        doctor_key: { type: String },
+      }
+    ],
+
+    // Billing/Receipt History
+    receipts: [
+      {
+        title_key: { type: String },
+        issuer_key: { type: String },
+        date: { type: String },
+        amount: { type: String },
+        status_key: { type: String },
       }
     ],
 

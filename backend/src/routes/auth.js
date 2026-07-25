@@ -1,111 +1,53 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 const Citizen = require('../models/Citizen');
 const OtpSession = require('../models/OtpSession');
 const Hospital = require('../models/Hospital');
 
-// Configure nodemailer transporter (will be initialized dynamically)
-let transporter;
+// ─── Twilio Client Initialization ──────────────────────────────────────────────
+let twilioClient;
 
-const initTransporter = async () => {
-  if (process.env.SMTP_USER && process.env.SMTP_HOST) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-    console.log('📬 Nodemailer configured using SMTP credentials from environment.');
-  } else {
+const initTwilio = () => {
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
     try {
-      console.log('📬 SMTP credentials missing in environment. Creating free test account on Ethereal Mail...');
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      console.log(`📬 Ethereal test SMTP account created!`);
-      console.log(`   User: ${testAccount.user}`);
-      console.log(`   Pass: ${testAccount.pass}`);
+      twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      console.log('📱 Twilio client initialized successfully.');
+      if (process.env.TWILIO_VERIFY_SERVICE_SID) {
+        console.log('   Using Twilio Verify Service:', process.env.TWILIO_VERIFY_SERVICE_SID);
+      } else if (process.env.TWILIO_PHONE_NUMBER) {
+        console.log('   Using Twilio Programmable SMS Phone Number:', process.env.TWILIO_PHONE_NUMBER);
+      }
     } catch (e) {
-      console.error('❌ Failed to create Ethereal SMTP test account, fallback to console log only:', e.message);
+      console.error('❌ Failed to initialize Twilio client:', e.message);
     }
+  } else {
+    console.log('📱 Twilio credentials missing in .env (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN).');
+    console.log('   SMS OTPs will be printed to server terminal for testing.');
   }
 };
-initTransporter();
+initTwilio();
 
-// Helper: send Email OTP
-const sendEmailOtp = async (email, otp) => {
-  let senderEmail = 'no-reply@swasthyatap.in';
-  if (process.env.SMTP_USER && process.env.SMTP_HOST) {
-    if (process.env.SMTP_USER === 'resend') {
-      senderEmail = 'onboarding@resend.dev';
-    } else {
-      senderEmail = process.env.SMTP_USER;
-    }
-  } else if (transporter && transporter.options && transporter.options.auth) {
-    senderEmail = transporter.options.auth.user;
+// Helper: Format phone number into E.164 format (e.g. +919876543210 or +12345678900)
+const formatE164 = (phone) => {
+  if (!phone) return '';
+  let cleaned = String(phone).trim();
+  const digits = cleaned.replace(/\D/g, '');
+  if (cleaned.startsWith('+')) {
+    return `+${digits}`;
   }
-
-  const mailOptions = {
-    from: `"SwasthyaTap" <${senderEmail}>`,
-    to: email,
-    subject: 'SwasthyaTap Verification OTP',
-    text: `Your OTP for SwasthyaTap citizen login/registration is ${otp}. It will expire in 5 minutes.`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #0f766e; text-align: center;">SwasthyaTap Verification</h2>
-        <p>Hello,</p>
-        <p>Use the following 4-digit OTP to complete your registration or login to SwasthyaTap:</p>
-        <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #0f766e; border-radius: 6px; margin: 20px 0;">
-          ${otp}
-        </div>
-        <p style="font-size: 12px; color: #64748b;">This OTP will expire in 5 minutes. If you did not request this, you can safely ignore this email.</p>
-      </div>
-    `,
-  };
-
-  if (!transporter) {
-    console.log(`\n📧 [Transporter Offline] Logged Email OTP for ${email}: ${otp} (expires in 5 minutes)\n`);
-    return false;
+  if (digits.length === 10) {
+    return `+91${digits}`;
   }
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`\n📧 Email OTP sent to ${email} (expires in 5 minutes)`);
-    // If it's Ethereal, log preview link
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-      console.log(`📬 Ethereal Email Preview URL: ${previewUrl}\n`);
-    } else {
-      console.log(`📬 Mail Sent ID: ${info.messageId}\n`);
-    }
-    return true;
-  } catch (err) {
-    console.error('❌ Failed to send email via SMTP:', err.message);
-    console.log(`\n📧 [Fallback Log] Email OTP for ${email}: ${otp} (expires in 5 minutes)\n`);
-    return false;
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits}`;
   }
+  return `+91${digits.slice(-10)}`;
 };
 
-// Helper: Generate 4-digit OTP
+// Helper: Generate 4-digit OTP for dev/programmable mode
 const generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString();
-
-// Helper: Validate email format
-const validateEmail = (email) => {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(String(email).toLowerCase());
-};
 
 // Helper: Generate a unique 6-char profile ID
 const generateProfileId = () => {
@@ -118,91 +60,160 @@ const generateProfileId = () => {
 };
 
 // ─── POST /api/auth/send-otp ──────────────────────────────────────────────────
-// Send OTP to citizen's email address
+// Send SMS OTP to citizen's mobile number via Twilio
 router.post('/send-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { phone, mobileNumber, phoneNumber, email } = req.body;
+    const rawPhone = phone || mobileNumber || phoneNumber || email;
 
-    if (!email || !validateEmail(email)) {
-      return res.status(400).json({ success: false, message: 'Valid email address required' });
+    if (!rawPhone) {
+      return res.status(400).json({ success: false, message: 'Mobile phone number is required' });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const formattedPhone = formatE164(rawPhone);
+    const clean10Digit = formattedPhone.replace(/\D/g, '').slice(-10);
 
-    // Delete any existing unused OTP for this email
-    await OtpSession.deleteMany({ email: cleanEmail, purpose: 'citizen_login' });
+    if (!clean10Digit || clean10Digit.length < 10) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit mobile number' });
+    }
 
-    const otp = generateOtp();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    let devOtp = null;
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-    await OtpSession.create({ email: cleanEmail, otp, purpose: 'citizen_login', expiresAt });
+    if (twilioClient && verifyServiceSid) {
+      // Method A: Twilio Verify Service API (Recommended)
+      try {
+        await twilioClient.verify.v2
+          .services(verifyServiceSid)
+          .verifications.create({ to: formattedPhone, channel: 'sms' });
+        console.log(`\n📱 [Twilio Verify] Sent SMS OTP to ${formattedPhone}\n`);
+      } catch (twilioErr) {
+        console.error('❌ Twilio Verify Service error:', twilioErr.message);
+        // Fallback to local OTP generation if Twilio API call fails
+        devOtp = generateOtp();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        await OtpSession.deleteMany({ phone: clean10Digit, purpose: 'citizen_login' });
+        await OtpSession.create({ phone: clean10Digit, otp: devOtp, purpose: 'citizen_login', expiresAt });
+        console.log(`\n📱 [Fallback Dev Log] SMS OTP for ${formattedPhone}: ${devOtp}\n`);
+      }
+    } else if (twilioClient && process.env.TWILIO_PHONE_NUMBER) {
+      // Method B: Twilio Programmable SMS (via Phone Number)
+      const otp = generateOtp();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Send email (actual or mock console log)
-    await sendEmailOtp(cleanEmail, otp);
+      await OtpSession.deleteMany({ phone: clean10Digit, purpose: 'citizen_login' });
+      await OtpSession.create({ phone: clean10Digit, otp, purpose: 'citizen_login', expiresAt });
 
-    const isEthereal = transporter && transporter.options && transporter.options.host && transporter.options.host.includes('ethereal');
-    const hasRealSmtp = process.env.SMTP_USER && process.env.SMTP_HOST && !isEthereal;
-    const showDevOtp = process.env.NODE_ENV !== 'production' && (!hasRealSmtp || process.env.SHOW_DEV_OTP === 'true');
+      try {
+        const msg = await twilioClient.messages.create({
+          body: `Your SwasthyaTap verification OTP is ${otp}. It expires in 5 minutes.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: formattedPhone,
+        });
+        console.log(`\n📱 [Twilio SMS] Sent OTP to ${formattedPhone} (SID: ${msg.sid})\n`);
+      } catch (twilioErr) {
+        console.error('❌ Twilio Programmable SMS error:', twilioErr.message);
+        devOtp = otp;
+        console.log(`\n📱 [Fallback Dev Log] SMS OTP for ${formattedPhone}: ${otp}\n`);
+      }
+    } else {
+      // Dev mode without active Twilio credentials
+      const otp = generateOtp();
+      devOtp = otp;
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      await OtpSession.deleteMany({ phone: clean10Digit, purpose: 'citizen_login' });
+      await OtpSession.create({ phone: clean10Digit, otp, purpose: 'citizen_login', expiresAt });
+
+      console.log(`\n📱 [Terminal Dev Mode] SMS OTP for ${formattedPhone} (+91-${clean10Digit}): ${otp}\n`);
+    }
+
+    const showDevOtp = devOtp || (process.env.NODE_ENV !== 'production' && process.env.SHOW_DEV_OTP === 'true');
 
     res.json({
       success: true,
-      message: `OTP sent to ${cleanEmail}`,
-      ...(showDevOtp && { devOtp: otp }),
+      message: `OTP sent via SMS to ${formattedPhone}`,
+      ...(showDevOtp && devOtp && { devOtp }),
     });
   } catch (err) {
     console.error('send-otp error:', err);
-    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    res.status(500).json({ success: false, message: 'Failed to send OTP to mobile number' });
   }
 });
 
 // ─── POST /api/auth/verify-otp ───────────────────────────────────────────────
-// Verify OTP and login/register citizen
+// Verify SMS OTP and login/register citizen
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { phone, mobileNumber, phoneNumber, email, otp } = req.body;
+    const rawPhone = phone || mobileNumber || phoneNumber || email;
 
-    if (!email || !otp) {
-      return res.status(400).json({ success: false, message: 'Email and OTP required' });
+    if (!rawPhone || !otp) {
+      return res.status(400).json({ success: false, message: 'Mobile phone number and OTP are required' });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const formattedPhone = formatE164(rawPhone);
+    const clean10Digit = formattedPhone.replace(/\D/g, '').slice(-10);
+    let isOtpValid = false;
 
-    // Find valid OTP session
-    const session = await OtpSession.findOne({
-      email: cleanEmail,
-      purpose: 'citizen_login',
-      used: false,
-      expiresAt: { $gt: new Date() },
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+    if (twilioClient && verifyServiceSid) {
+      // Check via Twilio Verify API first
+      try {
+        const check = await twilioClient.verify.v2
+          .services(verifyServiceSid)
+          .verificationChecks.create({ to: formattedPhone, code: otp.toString() });
+
+        if (check.status === 'approved') {
+          isOtpValid = true;
+        }
+      } catch (e) {
+        console.warn('Twilio Verify check failed, checking local database session...', e.message);
+      }
+    }
+
+    // Fallback or Programmable SMS database session check
+    if (!isOtpValid) {
+      const session = await OtpSession.findOne({
+        phone: clean10Digit,
+        purpose: 'citizen_login',
+        used: false,
+        expiresAt: { $gt: new Date() },
+      });
+
+      if (session && session.otp === otp.toString()) {
+        isOtpValid = true;
+        session.used = true;
+        await session.save();
+      }
+    }
+
+    if (!isOtpValid) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Find or create citizen profile by mobile number
+    let citizen = await Citizen.findOne({
+      $or: [
+        { phoneNumber: clean10Digit },
+        { phoneNumber: formattedPhone },
+        { phoneNumber: `+91${clean10Digit}` },
+      ],
     });
 
-    if (!session) {
-      return res.status(401).json({ success: false, message: 'OTP expired or invalid. Please request a new one.' });
-    }
-
-    if (session.otp !== otp.toString()) {
-      return res.status(401).json({ success: false, message: 'Incorrect OTP' });
-    }
-
-    // Mark OTP as used
-    session.used = true;
-    await session.save();
-
-    // Find or create citizen
-    let citizen = await Citizen.findOne({ email: cleanEmail });
     let isNewUser = false;
 
     if (!citizen) {
-      // New user — create a minimal profile
       isNewUser = true;
       let profileId = generateProfileId();
-      // Ensure profileId is unique
       while (await Citizen.findOne({ profileId })) {
         profileId = generateProfileId();
       }
 
       citizen = await Citizen.create({
         profileId,
-        email: cleanEmail,
+        phoneNumber: clean10Digit,
         fullName: 'SwasthyaTap User',
         bloodGroup: 'Unknown',
         emergencyContacts: [],
@@ -212,7 +223,7 @@ router.post('/verify-otp', async (req, res) => {
 
     // Issue JWT token
     const token = jwt.sign(
-      { citizenId: citizen.profileId, email: cleanEmail },
+      { citizenId: citizen.profileId, phoneNumber: citizen.phoneNumber },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -225,7 +236,7 @@ router.post('/verify-otp', async (req, res) => {
     });
   } catch (err) {
     console.error('verify-otp error:', err);
-    res.status(500).json({ success: false, message: 'Verification failed' });
+    res.status(500).json({ success: false, message: 'Mobile OTP verification failed' });
   }
 });
 
@@ -235,16 +246,16 @@ router.post('/hospital/send-otp', async (req, res) => {
     const { phone, hospitalId } = req.body;
 
     if (!phone || !hospitalId) {
-      return res.status(400).json({ success: false, message: 'Phone and Hospital ID required' });
+      return res.status(400).json({ success: false, message: 'Phone number and Hospital ID required' });
     }
 
-    // Verify this hospital exists
     const hospital = await Hospital.findOne({ hospitalId });
     if (!hospital) {
       return res.status(404).json({ success: false, message: 'Hospital ID not found in registry' });
     }
 
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    const formattedPhone = formatE164(phone);
+    const cleanPhone = formattedPhone.replace(/\D/g, '').slice(-10);
 
     await OtpSession.deleteMany({ phone: cleanPhone, purpose: 'hospital_login' });
 
@@ -253,21 +264,41 @@ router.post('/hospital/send-otp', async (req, res) => {
 
     await OtpSession.create({ phone: cleanPhone, otp, purpose: 'hospital_login', expiresAt });
 
-    console.log(`\n🏥 Hospital OTP for ${hospital.name} (+91-${cleanPhone}): ${otp}\n`);
+    let devOtp = null;
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-    const isEthereal = transporter && transporter.options && transporter.options.host && transporter.options.host.includes('ethereal');
-    const hasRealSmtp = process.env.SMTP_USER && process.env.SMTP_HOST && !isEthereal;
-    const showDevOtp = process.env.NODE_ENV !== 'production' && (!hasRealSmtp || process.env.SHOW_DEV_OTP === 'true');
+    if (twilioClient && verifyServiceSid) {
+      try {
+        await twilioClient.verify.v2.services(verifyServiceSid).verifications.create({ to: formattedPhone, channel: 'sms' });
+      } catch (e) {
+        devOtp = otp;
+      }
+    } else if (twilioClient && process.env.TWILIO_PHONE_NUMBER) {
+      try {
+        await twilioClient.messages.create({
+          body: `Hospital Login OTP for ${hospital.name} is ${otp}. Valid for 5 minutes.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: formattedPhone,
+        });
+      } catch (e) {
+        devOtp = otp;
+      }
+    } else {
+      devOtp = otp;
+      console.log(`\n🏥 Hospital SMS OTP for ${hospital.name} (${formattedPhone}): ${otp}\n`);
+    }
+
+    const showDevOtp = devOtp || (process.env.NODE_ENV !== 'production' && process.env.SHOW_DEV_OTP === 'true');
 
     res.json({
       success: true,
-      message: `OTP sent to registered number for ${hospital.name}`,
+      message: `OTP sent to mobile number for ${hospital.name}`,
       hospitalName: hospital.name,
-      ...(showDevOtp && { devOtp: otp }),
+      ...(showDevOtp && devOtp && { devOtp }),
     });
   } catch (err) {
     console.error('hospital send-otp error:', err);
-    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    res.status(500).json({ success: false, message: 'Failed to send SMS OTP' });
   }
 });
 
@@ -285,7 +316,6 @@ router.post('/hospital/verify', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    // Check personnel ID is authorized
     const authorizedStaff = hospital.authorizedPersonnel.find(
       (p) => p.personnelId === personnelId
     );
@@ -293,23 +323,44 @@ router.post('/hospital/verify', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Personnel ID not authorized for this hospital' });
     }
 
-    // Verify OTP
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-    const session = await OtpSession.findOne({
-      phone: cleanPhone,
-      purpose: 'hospital_login',
-      used: false,
-      expiresAt: { $gt: new Date() },
-    });
+    const formattedPhone = formatE164(phone);
+    const cleanPhone = formattedPhone.replace(/\D/g, '').slice(-10);
+    let isOtpValid = false;
 
-    if (!session || session.otp !== otp.toString()) {
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+    if (twilioClient && verifyServiceSid) {
+      try {
+        const check = await twilioClient.verify.v2
+          .services(verifyServiceSid)
+          .verificationChecks.create({ to: formattedPhone, code: otp.toString() });
+        if (check.status === 'approved') {
+          isOtpValid = true;
+        }
+      } catch (e) {
+        console.warn('Twilio verify hospital check failed, falling back to local session', e.message);
+      }
+    }
+
+    if (!isOtpValid) {
+      const session = await OtpSession.findOne({
+        phone: cleanPhone,
+        purpose: 'hospital_login',
+        used: false,
+        expiresAt: { $gt: new Date() },
+      });
+
+      if (session && session.otp === otp.toString()) {
+        isOtpValid = true;
+        session.used = true;
+        await session.save();
+      }
+    }
+
+    if (!isOtpValid) {
       return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
-    session.used = true;
-    await session.save();
-
-    // Issue hospital JWT
     const token = jwt.sign(
       { hospitalId: hospital.hospitalId, personnelId, hospitalName: hospital.name },
       process.env.JWT_SECRET,

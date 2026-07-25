@@ -31,42 +31,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkSession() async {
     try {
-      // Restore JWT from disk into ApiService memory
-      final session = await ApiService.init();
-
-      if (!mounted) return;
-
-      if (session != null) {
-        // ✅ Returning user — skip registration entirely
-        if (session.isCitizen) {
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 800),
-              pageBuilder: (context, animation, _) => const CitizenDashboard(),
-              transitionsBuilder: (context, animation, _, child) =>
-                  FadeTransition(opacity: animation, child: child),
-            ),
-          );
-        } else {
-          // Hospital session
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 800),
-              pageBuilder: (context, animation, _) => const HospitalDashboard(),
-              transitionsBuilder: (context, animation, _, child) =>
-                  FadeTransition(opacity: animation, child: child),
-            ),
-          );
-        }
-      } else {
-        // 🆕 First-time user — show onboarding
-        _goToOnboarding();
-      }
-    } catch (e, stack) {
-      debugPrint('Error restoring session: $e\n$stack');
-      if (mounted) {
-        _goToOnboarding();
-      }
+      // Restore JWT from disk
+      await ApiService.init();
+      // Clear token so that the user does not bypass login screens
+      ApiService.clearToken();
+    } catch (e) {
+      debugPrint('Error clearing session: $e');
+    }
+    if (mounted) {
+      _goToOnboarding();
     }
   }
 
