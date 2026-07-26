@@ -203,70 +203,74 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
 
                       // Premium pulsing radar animation (always moving)
                       Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            AnimatedBuilder(
-                              animation: _pulseController,
-                              builder: (context, child) {
-                                final val = _pulseController.value;
-                                return Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    // Outer ring
-                                    Container(
-                                      width: 140 + (120 * val),
-                                      height: 140 + (120 * val),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: const Color(0xFF0D9488).withValues(alpha: 1.0 - val),
-                                          width: 1.5,
+                        child: SizedBox(
+                          width: 300,
+                          height: 300,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              AnimatedBuilder(
+                                animation: _pulseController,
+                                builder: (context, child) {
+                                  final val = _pulseController.value;
+                                  return Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Outer ring
+                                      Container(
+                                        width: 140 + (120 * val),
+                                        height: 140 + (120 * val),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0D9488).withValues(alpha: 1.0 - val),
+                                            width: 1.5,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    // Middle ring
-                                    Container(
-                                      width: 180 + (90 * val),
-                                      height: 180 + (90 * val),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: const Color(0xFF0D9488).withValues(alpha: 0.5 * (1.0 - val)),
-                                          width: 1.0,
+                                      // Middle ring
+                                      Container(
+                                        width: 180 + (90 * val),
+                                        height: 180 + (90 * val),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF0D9488).withValues(alpha: 0.5 * (1.0 - val)),
+                                            width: 1.0,
+                                          ),
                                         ),
                                       ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              // Central scanning hub
+                              Container(
+                                width: 150,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E293B).withValues(alpha: 0.7),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF0D9488).withValues(alpha: 0.4),
+                                    width: 2.0,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                                      blurRadius: 30,
+                                      spreadRadius: 5,
                                     ),
                                   ],
-                                );
-                              },
-                            ),
-                            // Central scanning hub
-                            Container(
-                              width: 150,
-                              height: 150,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B).withValues(alpha: 0.7),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFF0D9488).withValues(alpha: 0.4),
-                                  width: 2.0,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF0D9488).withValues(alpha: 0.15),
-                                    blurRadius: 30,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
+                                child: const Icon(
+                                  Icons.contactless_rounded,
+                                  color: Color(0xFF2DD4BF),
+                                  size: 68,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.contactless_rounded,
-                                color: Color(0xFF2DD4BF),
-                                size: 68,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 70),
