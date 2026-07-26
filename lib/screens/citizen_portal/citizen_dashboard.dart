@@ -1790,10 +1790,10 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
           if (extractedId.contains('/')) {
             extractedId = extractedId.split('/').first;
           }
-          if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(extractedId)) {
+          if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(extractedId) || RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(extractedId)) {
             isCardUrl = true;
           }
-        } else if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(trimmed)) {
+        } else if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(trimmed) || RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(trimmed)) {
           isCardUrl = true;
         }
 
