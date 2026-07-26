@@ -245,9 +245,9 @@ router.post('/:id/add-credits', authenticate, async (req, res) => {
 // Hospital-authenticated: fetch (or generate) the NFC write URL for a patient
 router.get('/:id/nfc-token', authenticate, async (req, res) => {
   try {
-    // Only hospital JWTs may call this endpoint
-    if (!req.user.hospitalId) {
-      return res.status(403).json({ success: false, message: 'Only hospital personnel can request NFC tokens' });
+    // Allow either hospital personnel OR the citizen themselves
+    if (!req.user.hospitalId && req.user.citizenId !== req.params.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to request card tokens' });
     }
 
     const citizen = await Citizen.findOne({ profileId: req.params.id });

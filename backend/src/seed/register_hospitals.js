@@ -13,7 +13,7 @@ const newHospitals = [
     state: 'Karnataka',
     lat: 12.8954,
     lng: 77.5979,
-    registeredPhone: '9900112233',
+    registeredPhone: '8305134724',
     authorizedPersonnel: [
       { personnelId: 'STAFF-006', name: 'Dr. Aditya Chhipa', designation: 'Cardiologist Head' },
       { personnelId: 'STAFF-007', name: 'Nurse Sophia', designation: 'ER Specialist Nurse' },

@@ -243,10 +243,10 @@ router.post('/verify-otp', async (req, res) => {
 // ─── POST /api/auth/hospital/send-otp ────────────────────────────────────────
 router.post('/hospital/send-otp', async (req, res) => {
   try {
-    const { phone, hospitalId } = req.body;
+    const { hospitalId } = req.body;
 
-    if (!phone || !hospitalId) {
-      return res.status(400).json({ success: false, message: 'Phone number and Hospital ID required' });
+    if (!hospitalId) {
+      return res.status(400).json({ success: false, message: 'Hospital Registration ID is required' });
     }
 
     const hospital = await Hospital.findOne({ hospitalId });
@@ -254,7 +254,11 @@ router.post('/hospital/send-otp', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital ID not found in registry' });
     }
 
-    const formattedPhone = formatE164(phone);
+    if (!hospital.registeredPhone) {
+      return res.status(400).json({ success: false, message: 'No registered phone found for this hospital' });
+    }
+
+    const formattedPhone = formatE164(hospital.registeredPhone);
     const cleanPhone = formattedPhone.replace(/\D/g, '').slice(-10);
 
     await OtpSession.deleteMany({ phone: cleanPhone, purpose: 'hospital_login' });
@@ -285,30 +289,34 @@ router.post('/hospital/send-otp', async (req, res) => {
       }
     } else {
       devOtp = otp;
-      console.log(`\n🏥 Hospital SMS OTP for ${hospital.name} (${formattedPhone}): ${otp}\n`);
+      console.log(`\n🏥 Hospital OTP for ${hospital.name} → ${formattedPhone}: ${otp}\n`);
     }
 
     const showDevOtp = devOtp || (process.env.NODE_ENV !== 'production' && process.env.SHOW_DEV_OTP === 'true');
 
+    // Mask phone for display: show only last 3 digits
+    const maskedPhone = `XXXXXXX${cleanPhone.slice(-3)}`;
+
     res.json({
       success: true,
-      message: `OTP sent to mobile number for ${hospital.name}`,
+      message: `OTP sent to registered number (${maskedPhone}) for ${hospital.name}`,
       hospitalName: hospital.name,
+      maskedPhone,
       ...(showDevOtp && devOtp && { devOtp }),
     });
   } catch (err) {
     console.error('hospital send-otp error:', err);
-    res.status(500).json({ success: false, message: 'Failed to send SMS OTP' });
+    res.status(500).json({ success: false, message: 'Failed to send OTP' });
   }
 });
 
 // ─── POST /api/auth/hospital/verify ──────────────────────────────────────────
 router.post('/hospital/verify', async (req, res) => {
   try {
-    const { hospitalId, personnelId, phone, otp } = req.body;
+    const { hospitalId, otp } = req.body;
 
-    if (!hospitalId || !personnelId || !phone || !otp) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    if (!hospitalId || !otp) {
+      return res.status(400).json({ success: false, message: 'Hospital ID and OTP are required' });
     }
 
     const hospital = await Hospital.findOne({ hospitalId });
@@ -316,14 +324,7 @@ router.post('/hospital/verify', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
 
-    const authorizedStaff = hospital.authorizedPersonnel.find(
-      (p) => p.personnelId === personnelId
-    );
-    if (!authorizedStaff) {
-      return res.status(403).json({ success: false, message: 'Personnel ID not authorized for this hospital' });
-    }
-
-    const formattedPhone = formatE164(phone);
+    const formattedPhone = formatE164(hospital.registeredPhone);
     const cleanPhone = formattedPhone.replace(/\D/g, '').slice(-10);
     let isOtpValid = false;
 
@@ -361,8 +362,11 @@ router.post('/hospital/verify', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
+    // Use first authorized personnel as default login identity
+    const defaultPersonnel = hospital.authorizedPersonnel?.[0] || { personnelId: 'STAFF-001' };
+
     const token = jwt.sign(
-      { hospitalId: hospital.hospitalId, personnelId, hospitalName: hospital.name },
+      { hospitalId: hospital.hospitalId, personnelId: defaultPersonnel.personnelId, hospitalName: hospital.name },
       process.env.JWT_SECRET,
       { expiresIn: '12h' }
     );
@@ -379,7 +383,7 @@ router.post('/hospital/verify', async (req, res) => {
         lng: hospital.lng,
         specialties: hospital.specialties,
       },
-      personnel: authorizedStaff,
+      personnel: defaultPersonnel,
     });
   } catch (err) {
     console.error('hospital verify error:', err);
