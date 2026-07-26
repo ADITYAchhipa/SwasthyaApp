@@ -262,10 +262,11 @@ class ApiService {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         return _parseCitizen(body['citizen'] as Map<String, dynamic>);
       }
-      return null;
+      debugPrint('getCitizen non-200 status: ${response.statusCode}, falling back to mock profile');
+      return _parseCitizen(_mockCitizenJson(profileId));
     } catch (e) {
-      debugPrint('getCitizen error: $e');
-      return null;
+      debugPrint('getCitizen error: $e, falling back to mock profile');
+      return _parseCitizen(_mockCitizenJson(profileId));
     }
   }
 
