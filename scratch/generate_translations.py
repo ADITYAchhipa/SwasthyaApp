@@ -382,8 +382,13 @@ keys = [
         'Tamil': 'NFC தட்டவும்', 'Marathi': 'NFC टॅप करा', 'Gujarati': 'NFC ટેપ', 'Kannada': 'NFC ಟ್ಯಾಪ್ ಮಾಡಿ',
         'Malayalam': 'NFC ടാപ്പ് ചെയ്യുക', 'Punjabi': 'NFC ਟੈਪ ਕਰੋ', 'Odia': 'NFC ଟ୍ୟାପ୍', 'Urdu': 'NFC ٹیپ کریں'
     }),
+    ('generate_qr', {
+        'English': 'Generate QR', 'Hindi': 'क्यूआर जनरेट', 'Bengali': 'কিউআর জেনারেট', 'Telugu': 'QRని జనరేట్ చేయండి',
+        'Tamil': 'QR ஐ உருவாக்கு', 'Marathi': 'क्यूআর कोड तयार करा', 'Gujarati': 'ક્યુઆર જનરેટ કરો', 'Kannada': 'QR కోಡ್ ರಚಿಸಿ',
+        'Malayalam': 'ക്യുആർ കോഡ് സൃഷ്ടിക്കുക', 'Punjabi': 'ਕਿਊਆਰ ਕੋਡ ਬਣਾਓ', 'Odia': 'କ୍ୟୁଆର୍ ଜେନେରେଟ୍ କରନ୍ତୁ', 'Urdu': 'کیو آر جنریٹ کریں'
+    }),
     ('scan_qr', {
-        'English': 'Scan QR', 'Hindi': 'क्यूआर स्कैन', 'Bengali': 'কিউআর স্ক্যান', 'Telugu': 'QR స్కానర్',
+        'English': 'Scan QR', 'Hindi': 'क्यूআর स्कैन', 'Bengali': 'কিউআর স্ক্যান', 'Telugu': 'QR స్కానర్',
         'Tamil': 'QR ஸ்கேன்', 'Marathi': 'क्यूआर स्कॅन', 'Gujarati': 'ક્યુઆર સ્કેન', 'Kannada': 'ಕ್ಯೂಆರ್ ಸ್ಕ್ಯಾನ್',
         'Malayalam': 'ക്യുആർ സ്കാൻ', 'Punjabi': 'ਕਿਊਆਰ ਸਕੈਨ', 'Odia': 'କ୍ୟୁଆର୍ ସ୍କାନ୍', 'Urdu': 'کیو آر اسکین'
     }),
@@ -868,14 +873,28 @@ with open('/home/aditya/clones/Card/lib/utils/translation_service.dart', 'r') as
 # Match English dict
 eng_match = re.search(r"\'English\':\s*\{([^{}]+)\}", content)
 
+def clean_escaped_string(s):
+    if not isinstance(s, str):
+        return s
+    s = re.sub(r'\\+\'', "'", s)
+    s = re.sub(r'\\+n', "\n", s)
+    s = s.replace('\\\\', '\\')
+    return s
+
 eng_pairs = {}
 for k, val_dict in keys:
-    eng_pairs[k] = val_dict['English']
+    eng_pairs[k] = clean_escaped_string(val_dict['English'])
 
 if eng_match:
     pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", eng_match.group(1))
     for k, v in pairs:
-        eng_pairs[k] = v
+        eng_pairs[k] = clean_escaped_string(v)
+
+for cache_k, cache_v in translation_cache.items():
+    if cache_k.startswith('English:'):
+        k = cache_k.split('English:', 1)[1]
+        if k not in eng_pairs:
+            eng_pairs[k] = clean_escaped_string(cache_v)
 
 # Load initial commit's Hindi pairs to avoid Urdu contamination
 import subprocess
@@ -886,7 +905,7 @@ try:
     if old_hindi_match:
         pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", old_hindi_match.group(1))
         for k, v in pairs:
-            hindi_pairs[k] = v
+            hindi_pairs[k] = clean_escaped_string(v)
 except Exception as e:
     print("Warning: failed to load initial commit Hindi translations:", e)
 
@@ -898,8 +917,9 @@ hindi_match = re.search(r"\'Hindi\':\s*\{([^{}]+)\}", content)
 if hindi_match:
     pairs = re.findall(r"\'([a-zA-Z0-9_]+)\'\s*:\s*\'((?:\\\'|[^\'])*)\'", hindi_match.group(1))
     for k, v in pairs:
-        if not is_arabic(v) and v != eng_pairs.get(k):
-            hindi_pairs[k] = v
+        v_clean = clean_escaped_string(v)
+        if not is_arabic(v_clean) and v_clean != eng_pairs.get(k):
+            hindi_pairs[k] = v_clean
 
 # Populate eng_pairs and hindi_pairs for all keys
 for k, v in eng_pairs.items():

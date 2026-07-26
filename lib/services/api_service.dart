@@ -160,15 +160,14 @@ class ApiService {
     }
   }
 
-  /// Send OTP for hospital login.
-  static Future<Map<String, dynamic>> sendHospitalOtp(String phone, String hospitalId) async {
+  /// Send OTP for hospital login — only hospitalId needed, backend uses registered phone.
+  static Future<Map<String, dynamic>> sendHospitalOtp(String hospitalId) async {
     try {
-      final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/hospital/send-otp'),
             headers: _headers,
-            body: jsonEncode({'phone': cleanPhone, 'hospitalId': hospitalId}),
+            body: jsonEncode({'hospitalId': hospitalId}),
           )
           .timeout(const Duration(seconds: 10));
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -183,26 +182,23 @@ class ApiService {
     }
   }
 
-  /// Verify hospital credentials + OTP.
+  /// Verify hospital OTP — only hospitalId + otp needed.
   static Future<Map<String, dynamic>> verifyHospital(
-      String hospitalId, String personnelId, String phone, String otp) async {
+      String hospitalId, String otp) async {
     try {
-      final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/hospital/verify'),
             headers: _headers,
             body: jsonEncode({
               'hospitalId': hospitalId,
-              'personnelId': personnelId,
-              'phone': cleanPhone,
               'otp': otp,
             }),
           )
           .timeout(const Duration(seconds: 10));
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       if (body['success'] == true && body['token'] != null) {
-        setToken(body['token'] as String, 'hospital_${hospitalId}');
+        setToken(body['token'] as String, 'hospital_$hospitalId');
       }
       return body;
     } catch (e) {

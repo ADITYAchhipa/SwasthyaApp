@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
@@ -183,7 +184,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       'quick_actions': 'Quick Actions',
       'see_all': 'See All',
       'tap_nfc': 'Tap NFC',
-      'scan_qr': 'Scan QR',
+      'generate_qr': 'Generate QR',
       'blood_network': 'Blood Network',
       'nearby_centers': 'Nearby Centers',
       'emergency_alert': 'Emergency Alert',
@@ -216,7 +217,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       'quick_actions': 'त्वरित कार्रवाई',
       'see_all': 'सभी देखें',
       'tap_nfc': 'एनएफसी टैप',
-      'scan_qr': 'क्यूआर स्कैन',
+      'generate_qr': 'क्यूआर जनरेट',
       'blood_network': 'रक्त नेटवर्क',
       'nearby_centers': 'पास के केंद्र',
       'emergency_alert': 'आपातकालीन अलर्ट',
@@ -549,10 +550,226 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
+  void _showGenerateQrDialog(BuildContext context, MedicalProfile citizen) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        String? qrLink;
+        bool isLoading = true;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            if (isLoading && qrLink == null) {
+              ApiService.fetchNfcWriteUrl(citizen.id).then((result) {
+                if (result['success'] == true && result['nfcUrl'] != null) {
+                  final String rawUrl = result['nfcUrl'];
+                  final String hash = rawUrl.substring(rawUrl.lastIndexOf('/') + 1);
+                  setState(() {
+                    qrLink = "www.nfc.swasthyatap.in/card/$hash";
+                    isLoading = false;
+                  });
+                } else {
+                  // Fallback: generate a 64-character SHA-256 hash of the citizen ID
+                  final String fallbackHash = sha256.convert(utf8.encode(citizen.id)).toString();
+                  setState(() {
+                    qrLink = "www.nfc.swasthyatap.in/card/$fallbackHash";
+                    isLoading = false;
+                  });
+                }
+              }).catchError((err) {
+                // Fallback: generate a 64-character SHA-256 hash of the citizen ID
+                final String fallbackHash = sha256.convert(utf8.encode(citizen.id)).toString();
+                setState(() {
+                  qrLink = "www.nfc.swasthyatap.in/card/$fallbackHash";
+                  isLoading = false;
+                });
+              });
+            }
+
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                elevation: 10,
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 32),
+                          Text(
+                            "My Swasthya QR",
+                            style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Scan this code to instantly view your secure digital medical profile.",
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 200,
+                            height: 200,
+                            child: isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                                    ),
+                                  )
+                                : Image.network(
+                                    "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(qrLink!)}",
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return const Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(Icons.qr_code_rounded, size: 80, color: Colors.grey),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFA7F3D0), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Verified SwasthyaTap Link",
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF047857),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      if (!isLoading && qrLink != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  qrLink!,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: qrLink!));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "Link copied to clipboard!",
+                                            style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: AppTheme.accentTeal,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.copy_rounded,
+                                  size: 18,
+                                  color: AppTheme.accentTeal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildQuickActions(BuildContext context, SwasthyaTapProvider provider) {
     final actions = [
       {'icon': Icons.phone_android_rounded, 'label': _t('tap_nfc', provider.selectedLanguage), 'color': const Color(0xFF0F766E)},
-      {'icon': Icons.qr_code_scanner_rounded, 'label': _t('scan_qr', provider.selectedLanguage), 'color': const Color(0xFFF59E0B)},
+      {'icon': Icons.qr_code_rounded, 'label': _t('generate_qr', provider.selectedLanguage), 'color': const Color(0xFFF59E0B)},
       {'icon': Icons.assignment_rounded, 'label': 'My Reports', 'color': AppTheme.accentTeal},
       {'icon': Icons.description_rounded, 'label': 'Prescriptions', 'color': const Color(0xFF0F8B8D)},
       {'icon': Icons.bloodtype_outlined, 'label': _t('blood_network', provider.selectedLanguage), 'color': const Color(0xFFDC2626)},
@@ -578,8 +795,10 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
               final action = actions[index];
               return GestureDetector(
                 onTap: () {
-                  if (index == 1 || index == 0) {
+                  if (index == 0) {
                     _onTabSelected(1);
+                  } else if (index == 1) {
+                    _showGenerateQrDialog(context, provider.currentCitizen);
                   } else if (index == 2) {
                     Navigator.push(
                       context,
