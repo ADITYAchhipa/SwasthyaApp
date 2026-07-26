@@ -1,14 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:nfc_manager/nfc_manager.dart';
-import 'package:crypto/crypto.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../providers/swasthya_tap_provider.dart';
-import '../../theme/app_theme.dart';
-import '../../widgets/glass_card.dart';
 import 'scanned_profile_screen.dart';
 
 class NfcCardReaderScreen extends StatefulWidget {
@@ -20,9 +15,7 @@ class NfcCardReaderScreen extends StatefulWidget {
 
 class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTickerProviderStateMixin {
   bool _isScanning = false;
-  String _statusMessage = 'Initializing NFC...';
-  String _selectedProfileId = 'x7k9m2';
-  bool _isSimulating = false;
+  String _statusMessage = 'Align card with device back';
   late AnimationController _pulseController;
 
   @override
@@ -30,8 +23,10 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
     );
+    // Start pulsing immediately and keep repeating
+    _pulseController.repeat();
     _checkNfcAvailability();
   }
 
@@ -52,8 +47,8 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
       if (mounted) {
         setState(() {
           _statusMessage = available
-              ? 'Hold your SwasthyaTap Card near the back of your device'
-              : 'NFC reader is not supported on this device. Use simulator below.';
+              ? 'Ready to scan. Align card with device back.'
+              : 'NFC hardware not detected. Enable NFC in settings.';
         });
         if (available) {
           _startNfcSession();
@@ -62,7 +57,7 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
     } catch (e) {
       if (mounted) {
         setState(() {
-          _statusMessage = 'NFC Initialization failed. Use simulator below.';
+          _statusMessage = 'NFC sensor initialization error.';
         });
       }
     }
@@ -71,7 +66,6 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
   void _startNfcSession() {
     setState(() {
       _isScanning = true;
-      _pulseController.repeat();
     });
 
     try {
@@ -104,14 +98,14 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                 }
               }
             }
-            _updateStatus('Valid SwasthyaTap Card payload not detected.');
+            _updateStatus('Valid SwasthyaTap payload not detected.');
           } catch (e) {
             _updateStatus('Error reading card: $e');
           }
         },
       );
     } catch (e) {
-      _updateStatus('Failed to start NFC reader session: $e');
+      _updateStatus('NFC session start failed.');
     }
   }
 
@@ -128,7 +122,6 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
     if (mounted) {
       setState(() {
         _isScanning = false;
-        _pulseController.stop();
         _statusMessage = 'Card successfully read!';
       });
       
@@ -141,244 +134,257 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
     }
   }
 
-  void _simulateTap(SwasthyaTapProvider provider) async {
-    if (_isSimulating) return;
-    setState(() {
-      _isSimulating = true;
-      _pulseController.repeat();
-      _statusMessage = 'Reading Card NDEF memory...';
-    });
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // High-end, premium dark medical aesthetic
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF020617)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Custom Clean Navigation Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      'CARD READER',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(width: 48), // Symmetrical spacer
+                  ],
+                ),
+              ),
 
-    await Future.delayed(const Duration(milliseconds: 1500));
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 28.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 30),
+                      // High-end Typography
+                      Text(
+                        'SwasthyaTap NFC',
+                        style: GoogleFonts.outfit(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tap a card to retrieve patient records',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                      ),
+                      const SizedBox(height: 80),
 
-    if (!mounted) return;
+                      // Premium pulsing radar animation (always moving)
+                      Center(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            AnimatedBuilder(
+                              animation: _pulseController,
+                              builder: (context, child) {
+                                final val = _pulseController.value;
+                                return Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // Outer ring
+                                    Container(
+                                      width: 140 + (120 * val),
+                                      height: 140 + (120 * val),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFF0D9488).withValues(alpha: 1.0 - val),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    // Middle ring
+                                    Container(
+                                      width: 180 + (90 * val),
+                                      height: 180 + (90 * val),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFF0D9488).withValues(alpha: 0.5 * (1.0 - val)),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                            // Central scanning hub
+                            Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E293B).withValues(alpha: 0.7),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF0D9488).withValues(alpha: 0.4),
+                                  width: 2.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.contactless_rounded,
+                                color: Color(0xFF2DD4BF),
+                                size: 68,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 70),
 
-    final targetProfile = provider.profiles.firstWhere((p) => p.id == _selectedProfileId);
-    final String fallbackHash = sha256.convert(utf8.encode(targetProfile.id)).toString();
+                      // Glassmorphism status indicator
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF2DD4BF),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(0xFF2DD4BF),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                            ).animate(onPlay: (controller) => controller.repeat())
+                             .fade(duration: 800.ms),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _statusMessage,
+                                textAlign: TextAlign.start,
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fade(duration: 400.ms).slideY(begin: 0.1),
 
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _isSimulating = false;
-      _pulseController.stop();
-      _statusMessage = 'Card tapped!';
-    });
+                      const SizedBox(height: 40),
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ScannedProfileScreen(profileId: fallbackHash),
+                      // Premium instructions cards
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.02),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'How to scan card:',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInstructionStep(
+                              Icons.nfc_rounded,
+                              'Ensure NFC is enabled in system settings.',
+                            ),
+                            const SizedBox(height: 10),
+                            _buildInstructionStep(
+                              Icons.tap_and_play_rounded,
+                              'Place the card near the top-back region of your device.',
+                            ),
+                            const SizedBox(height: 10),
+                            _buildInstructionStep(
+                              Icons.timer_outlined,
+                              'Keep the card steady for 1-2 seconds until read completes.',
+                            ),
+                          ],
+                        ),
+                      ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<SwasthyaTapProvider>(context);
-
-    return Scaffold(
-      backgroundColor: AppTheme.lightBg,
-      appBar: AppBar(
-        title: const Text('NFC Card Reader'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.pop(context),
+  Widget _buildInstructionStep(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF2DD4BF)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              color: const Color(0xFF94A3B8),
+              fontSize: 12,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              'SwasthyaTap Health ID',
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Scan medical cards or rings to instantly view profile',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 50),
-
-            // Pulsing scanner graphic
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      final val = _pulseController.value;
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 120 + (80 * val),
-                            height: 120 + (80 * val),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.accentTeal.withValues(alpha: 1.0 - val),
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: 160 + (100 * val),
-                            height: 160 + (100 * val),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.accentTeal.withValues(alpha: 0.5 * (1.0 - val)),
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.accentTeal.withValues(alpha: 0.5), width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.accentTeal.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.contactless_rounded,
-                      color: AppTheme.accentTeal,
-                      size: 56,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 60),
-
-            // Status message
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderColor),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x05000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Text(
-                _statusMessage,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: AppTheme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                ),
-              ),
-            ).animate().fade(duration: 400.ms).slideY(begin: 0.1),
-
-            const SizedBox(height: 50),
-
-            // Card Tap Simulator for fallback
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.settings_suggest_rounded, color: AppTheme.accentTeal, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'NFC Card Simulator',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.accentTeal,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    value: _selectedProfileId,
-                    dropdownColor: AppTheme.cardBg,
-                    style: GoogleFonts.inter(color: AppTheme.textPrimary, fontSize: 13),
-                    decoration: AppTheme.premiumInputDecoration(
-                      label: 'Select Profile to Tap',
-                      icon: Icons.contactless,
-                    ),
-                    items: provider.profiles.map((p) {
-                      return DropdownMenuItem<String>(
-                        value: p.id,
-                        child: Text('${p.fullName} (${p.bloodGroup})'),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _selectedProfileId = val;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () => _simulateTap(provider),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentTeal,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: _isSimulating
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                            )
-                          : Text(
-                              'Simulate NFC Card Tap',
-                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
