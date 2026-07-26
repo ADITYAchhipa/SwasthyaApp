@@ -13,11 +13,11 @@ class ApiService {
   // For Web / Desktop → localhost
   // For iOS Simulator → localhost
   static String get baseUrl {
-    // Set this to true to connect to your Vercel deployment, false for localhost
-    const bool useProduction = false;
+    // Set this to true to connect to your production deployment, false for localhost
+    const bool useProduction = true;
 
     if (useProduction) {
-      return 'https://swasthya-pd7dbtswn-adityas-projects-b63fea21.vercel.app/api';
+      return 'http://api.swasthyatap.in/api';
     }
 
     if (kIsWeb) return 'http://localhost:3011/api';
