@@ -175,37 +175,38 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
               ),
 
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 28.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Column(
                     children: [
-                      const SizedBox(height: 30),
+                      const Spacer(flex: 1),
                       // High-end Typography
                       Text(
                         'SwasthyaTap NFC',
                         style: GoogleFonts.outfit(
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Tap a card to retrieve patient records',
                         style: GoogleFonts.inter(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xFF94A3B8),
                         ),
                       ),
-                      const SizedBox(height: 80),
+                      
+                      const Spacer(flex: 2),
 
                       // Premium pulsing radar animation (always moving)
                       Center(
                         child: SizedBox(
-                          width: 300,
-                          height: 300,
+                          width: 250,
+                          height: 250,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -218,8 +219,8 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                                     children: [
                                       // Outer ring
                                       Container(
-                                        width: 140 + (120 * val),
-                                        height: 140 + (120 * val),
+                                        width: 100 + (120 * val),
+                                        height: 100 + (120 * val),
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
@@ -230,8 +231,8 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                                       ),
                                       // Middle ring
                                       Container(
-                                        width: 180 + (90 * val),
-                                        height: 180 + (90 * val),
+                                        width: 130 + (90 * val),
+                                        height: 130 + (90 * val),
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
@@ -246,8 +247,8 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                               ),
                               // Central scanning hub
                               Container(
-                                width: 150,
-                                height: 150,
+                                width: 120,
+                                height: 120,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF1E293B).withValues(alpha: 0.7),
                                   shape: BoxShape.circle,
@@ -266,22 +267,23 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                                 child: const Icon(
                                   Icons.contactless_rounded,
                                   color: Color(0xFF2DD4BF),
-                                  size: 68,
+                                  size: 52,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 70),
+                      
+                      const Spacer(flex: 2),
 
                       // Glassmorphism status indicator
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                         ),
                         child: Row(
@@ -310,9 +312,9 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                                 textAlign: TextAlign.start,
                                 style: GoogleFonts.inter(
                                   color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 13.5,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  height: 1.4,
+                                  height: 1.3,
                                 ),
                               ),
                             ),
@@ -320,14 +322,14 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                         ),
                       ).animate().fade(duration: 400.ms).slideY(begin: 0.1),
 
-                      const SizedBox(height: 40),
+                      const Spacer(flex: 1),
 
                       // Premium instructions cards
                       Container(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.02),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                         ),
                         child: Column(
@@ -342,17 +344,17 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                                 letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             _buildInstructionStep(
                               Icons.nfc_rounded,
                               'Ensure NFC is enabled in system settings.',
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             _buildInstructionStep(
                               Icons.tap_and_play_rounded,
                               'Place the card near the top-back region of your device.',
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             _buildInstructionStep(
                               Icons.timer_outlined,
                               'Keep the card steady for 1-2 seconds until read completes.',
@@ -360,6 +362,7 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
                           ],
                         ),
                       ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1),
+                      const Spacer(flex: 1),
                     ],
                   ),
                 ),
