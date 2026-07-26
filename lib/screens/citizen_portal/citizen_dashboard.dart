@@ -26,6 +26,7 @@ import 'submit_report_screen.dart';
 import 'previous_reports_screen.dart';
 import 'medical_reports/my_reports_screen.dart';
 import 'prescriptions/prescriptions_dashboard_screen.dart';
+import 'nfc_card_reader_screen.dart';
 
 class CitizenDashboard extends StatefulWidget {
   const CitizenDashboard({Key? key}) : super(key: key);
@@ -183,7 +184,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       'emergency_sub': 'Your health information in < 1 second',
       'quick_actions': 'Quick Actions',
       'see_all': 'See All',
-      'tap_nfc': 'Tap NFC',
+      'tap_nfc': 'Card Reader',
       'generate_qr': 'Generate QR',
       'blood_network': 'Blood Network',
       'nearby_centers': 'Nearby Centers',
@@ -208,6 +209,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       'nav_profile': 'Profile',
       'nav_learn': 'Learn',
       'nav_more': 'More',
+      'nav_card_reader': 'Card Reader',
     },
     'hi': {
       'good_morning': 'शुभ प्रभात, ',
@@ -216,7 +218,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       'emergency_sub': 'आपकी स्वास्थ्य जानकारी < 1 सेकंड में',
       'quick_actions': 'त्वरित कार्रवाई',
       'see_all': 'सभी देखें',
-      'tap_nfc': 'एनएफसी टैप',
+      'tap_nfc': 'कार्ड रीडर',
       'generate_qr': 'क्यूआर जनरेट',
       'blood_network': 'रक्त नेटवर्क',
       'nearby_centers': 'पास के केंद्र',
@@ -796,7 +798,12 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
               return GestureDetector(
                 onTap: () {
                   if (index == 0) {
-                    _onTabSelected(1);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NfcCardReaderScreen(),
+                      ),
+                    );
                   } else if (index == 1) {
                     _showGenerateQrDialog(context, provider.currentCitizen);
                   } else if (index == 2) {
