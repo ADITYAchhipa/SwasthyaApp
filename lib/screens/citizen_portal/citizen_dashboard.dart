@@ -1661,33 +1661,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                         ],
                       ),
                     ),
-                    const SizedBox(width: 32),
-                    // Temp Profile Button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ScannedProfileScreen(),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                            child: const Icon(Icons.person_pin_rounded, color: Colors.white, size: 20),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(TranslationService.t(context, 'temp_profile'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
                 
