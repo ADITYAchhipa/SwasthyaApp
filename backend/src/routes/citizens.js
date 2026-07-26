@@ -78,12 +78,31 @@ function formatCitizen(c) {
 // Public read — used when a hospital NFC-scans a card
 router.get('/:id', async (req, res) => {
   try {
-    const citizen = await Citizen.findOne({ profileId: req.params.id });
+    let citizen = await Citizen.findOne({ profileId: req.params.id });
+
+    // If not found by profileId and id is a 64-character hash:
+    if (!citizen && req.params.id && req.params.id.length === 64) {
+      // 1. Look up by NfcCard rawToken
+      const card = await NfcCard.findOne({ rawToken: req.params.id });
+      if (card) {
+        citizen = await Citizen.findById(card.patientId);
+      }
+
+      // 2. If still not found, check if it's the SHA-256 fallback hash of a profileId
+      if (!citizen) {
+        const citizens = await Citizen.find({});
+        citizen = citizens.find(
+          c => crypto.createHash('sha256').update(c.profileId).digest('hex') === req.params.id
+        );
+      }
+    }
+
     if (!citizen) {
       return res.status(404).json({ success: false, message: 'Citizen profile not found' });
     }
     res.json({ success: true, citizen: formatCitizen(citizen) });
   } catch (err) {
+    console.error('Fetch citizen error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

@@ -1783,6 +1783,41 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       // 2. Try URL / ID parsing
       else {
         String extractedId = trimmed;
+        bool isCardUrl = false;
+
+        if (trimmed.contains('/card/')) {
+          extractedId = trimmed.split('/card/').last;
+          if (extractedId.contains('/')) {
+            extractedId = extractedId.split('/').first;
+          }
+          if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(extractedId)) {
+            isCardUrl = true;
+          }
+        } else if (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(trimmed)) {
+          isCardUrl = true;
+        }
+
+        if (isCardUrl) {
+          // Stop camera scanning session before navigating
+          try {
+            _cameraController.stop();
+          } catch (_) {}
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScannedProfileScreen(profileId: extractedId),
+            ),
+          ).then((_) {
+            // Restart camera scanning when coming back
+            try {
+              _cameraController.start();
+            } catch (_) {}
+          });
+          return;
+        }
+
+        // Fallback for non-card values:
         if (trimmed.contains('/')) {
           extractedId = trimmed.split('/').last;
         }
@@ -1831,10 +1866,9 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
             ),
           );
         }
+        // Successfully scanned, jump to the Profile Tab
+        _onTabSelected(2);
       }
-      
-      // Successfully scanned, jump to the Profile Tab
-      _onTabSelected(2);
       
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
