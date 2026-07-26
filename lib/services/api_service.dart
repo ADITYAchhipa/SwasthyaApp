@@ -14,17 +14,17 @@ class ApiService {
   // For iOS Simulator → localhost
   static String get baseUrl {
     // Set this to true to connect to your Vercel deployment, false for localhost
-    const bool useProduction = true;
+    const bool useProduction = false;
 
     if (useProduction) {
       return 'https://swasthya-pd7dbtswn-adityas-projects-b63fea21.vercel.app/api';
     }
 
-    if (kIsWeb) return 'http://localhost:3000/api';
+    if (kIsWeb) return 'http://localhost:3011/api';
     try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:3000/api';
+      if (Platform.isAndroid) return 'http://10.0.2.2:3011/api';
     } catch (_) {}
-    return 'http://localhost:3000/api';
+    return 'http://localhost:3011/api';
   }
 
   // ─── Auth Token (in-memory cache + persisted to disk) ────────────────────
@@ -90,16 +90,16 @@ class ApiService {
   // AUTH ENDPOINTS
   // ══════════════════════════════════════════════════════════════════════════
 
-  /// Send OTP to a citizen's email address.
+  /// Send OTP to a citizen's mobile number.
   /// Returns: { success, message, devOtp? }
-  static Future<Map<String, dynamic>> sendOtp(String email) async {
+  static Future<Map<String, dynamic>> sendOtp(String phone) async {
     try {
-      final cleanEmail = email.trim().toLowerCase();
+      final cleanPhone = phone.trim();
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/send-otp'),
             headers: _headers,
-            body: jsonEncode({'email': cleanEmail}),
+            body: jsonEncode({'phone': cleanPhone}),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -119,14 +119,14 @@ class ApiService {
 
   /// Verify OTP and log in / register citizen.
   /// Returns: { success, token, citizen, isNewUser }
-  static Future<Map<String, dynamic>> verifyOtp(String email, String otp) async {
+  static Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
     try {
-      final cleanEmail = email.trim().toLowerCase();
+      final cleanPhone = phone.trim();
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/verify-otp'),
             headers: _headers,
-            body: jsonEncode({'email': cleanEmail, 'otp': otp}),
+            body: jsonEncode({'phone': cleanPhone, 'otp': otp}),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -223,6 +223,34 @@ class ApiService {
     }
   }
 
+  /// Fetch lightweight citizen preview by SwasthyaTap ID (for hospital NFC writer).
+  /// Returns: { success, citizen: { id, fullName, bloodGroup, phoneNumber } }
+  static Future<Map<String, dynamic>> fetchCitizenPreview(String swasthyaId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/citizens/$swasthyaId'), headers: _headers)
+          .timeout(const Duration(seconds: 8));
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('fetchCitizenPreview error: $e');
+      return {'success': false, 'message': 'Could not reach server'};
+    }
+  }
+
+  /// Fetch (or generate) the NFC write URL for a patient — hospital auth required.
+  /// Returns: { success, nfcUrl, patientName, swasthyaId }
+  static Future<Map<String, dynamic>> fetchNfcWriteUrl(String swasthyaId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/citizens/$swasthyaId/nfc-token'), headers: _headers)
+          .timeout(const Duration(seconds: 10));
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('fetchNfcWriteUrl error: $e');
+      return {'success': false, 'message': 'Could not reach server'};
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // CITIZEN ENDPOINTS
   // ══════════════════════════════════════════════════════════════════════════
@@ -265,6 +293,126 @@ class ApiService {
       return null;
     } catch (e) {
       debugPrint('updateCitizen error: $e');
+      return null;
+    }
+  }
+
+  /// Add a prescription for a citizen.
+  static Future<MedicalProfile?> addPrescription(
+    String profileId,
+    Map<String, dynamic> prescriptionData, {
+    List<int>? fileBytes,
+    String? filename,
+  }) async {
+    try {
+      if (fileBytes != null && filename != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/citizens/$profileId/prescriptions'),
+        );
+        
+        // Copy over headers (excluding content-type)
+        _headers.forEach((key, val) {
+          if (key.toLowerCase() != 'content-type') {
+            request.headers[key] = val;
+          }
+        });
+
+        prescriptionData.forEach((key, val) {
+          if (key == 'rxList') {
+            request.fields[key] = jsonEncode(val);
+          } else {
+            request.fields[key] = val.toString();
+          }
+        });
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: filename,
+          ),
+        );
+
+        final streamedResponse = await request.send().timeout(const Duration(seconds: 20));
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          return _parseCitizen(body['citizen'] as Map<String, dynamic>);
+        }
+        debugPrint('addPrescription multipart failed: ${response.body}');
+        return null;
+      } else {
+        final response = await http
+            .post(
+              Uri.parse('$baseUrl/citizens/$profileId/prescriptions'),
+              headers: _headers,
+              body: jsonEncode(prescriptionData),
+            )
+            .timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          return _parseCitizen(body['citizen'] as Map<String, dynamic>);
+        }
+        debugPrint('addPrescription failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('addPrescription error: $e');
+      return null;
+    }
+  }
+
+  /// Upload a medical report for a citizen.
+  static Future<MedicalProfile?> uploadMedicalReport(
+    String profileId, {
+    required String title,
+    required String issuer,
+    required String date,
+    required String doctor,
+    required List<int> fileBytes,
+    required String filename,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/citizens/$profileId/medical-reports'),
+      );
+      
+      // Copy over headers (excluding content-type)
+      _headers.forEach((key, val) {
+        if (key.toLowerCase() != 'content-type') {
+          request.headers[key] = val;
+        }
+      });
+
+      request.fields['title_key'] = title;
+      request.fields['issuer_key'] = issuer;
+      request.fields['date'] = date;
+      request.fields['doctor_key'] = doctor;
+      request.fields['status_key'] = 'verified_report';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: filename,
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 20));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return _parseCitizen(body['citizen'] as Map<String, dynamic>);
+      }
+      debugPrint('uploadMedicalReport failed: ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('uploadMedicalReport error: $e');
       return null;
     }
   }
@@ -504,6 +652,10 @@ class ApiService {
   // PARSERS — JSON → Flutter Model Objects
   // ══════════════════════════════════════════════════════════════════════════
 
+  static MedicalProfile parseCitizen(Map<String, dynamic> json) {
+    return _parseCitizen(json);
+  }
+
   static MedicalProfile _parseCitizen(Map<String, dynamic> json) {
     final contactsJson = (json['emergencyContacts'] as List<dynamic>?) ?? [];
     final contacts = contactsJson
@@ -541,6 +693,7 @@ class ApiService {
       profileImage: json['profileImage'] as String?,
       medicalReports: json['medicalReports'] as List<dynamic>? ?? [],
       receipts: json['receipts'] as List<dynamic>? ?? [],
+      prescriptions: json['prescriptions'] as List<dynamic>? ?? [],
     );
   }
 

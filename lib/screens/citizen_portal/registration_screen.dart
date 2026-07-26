@@ -19,7 +19,7 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final List<TextEditingController> _otpControllers = List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
   
@@ -139,7 +139,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     for (var c in _otpControllers) {
       c.dispose();
     }
@@ -165,9 +165,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   void _sendOtp() async {
-    final email = _emailController.text.trim();
-    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-    if (!emailRegex.hasMatch(email)) {
+    final phone = _phoneController.text.trim();
+    final phoneRegex = RegExp(r'^[0-9]{10}$');
+    if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_t('error_10digit')),
@@ -179,7 +179,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.sendOtp(email);
+      final result = await ApiService.sendOtp(phone);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -232,7 +232,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     try {
       final result = await ApiService.verifyOtp(
-        _emailController.text.trim(),
+        _phoneController.text.trim(),
         otp,
       );
 
@@ -405,8 +405,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
         const SizedBox(height: 10),
         TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          maxLength: 10,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
+          ],
           style: const TextStyle(
             color: AppTheme.textPrimary,
             fontWeight: FontWeight.bold,
@@ -414,7 +419,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
           decoration: InputDecoration(
             counterText: '',
-            prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.textSecondary, size: 20),
+            prefixIcon: const Icon(Icons.phone_android_rounded, color: AppTheme.textSecondary, size: 20),
             hintText: _t('enter_hint'),
             hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
             fillColor: Colors.white,
@@ -464,7 +469,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
             ),
             Text(
-              '${_t('sent_to')}${_emailController.text}',
+              '${_t('sent_to')}${_phoneController.text}',
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
             ),
           ],

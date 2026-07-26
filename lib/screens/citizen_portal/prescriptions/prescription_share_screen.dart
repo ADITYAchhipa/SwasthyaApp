@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../providers/swasthya_tap_provider.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/translation_service.dart';
+import '../../../utils/medical_translation_service.dart';
 
 class PrescriptionShareScreen extends StatefulWidget {
   final String prescriptionId;
@@ -16,6 +18,9 @@ class PrescriptionShareScreen extends StatefulWidget {
 class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
   bool _qrRefreshed = false;
 
+  String _t(String key) => TranslationService.t(context, key);
+  String _tm(String value) => MedicalTranslationService.translate(context, value);
+
   void _refreshQR() {
     setState(() {
       _qrRefreshed = true;
@@ -26,8 +31,8 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
           _qrRefreshed = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Prescription QR code refreshed and re-signed.'),
+          SnackBar(
+            content: Text(_t('qr_refreshed_msg')),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -49,7 +54,7 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
     if (rx == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('Prescription not found.')),
+        body: Center(child: Text(_t('prescription_not_found'))),
       );
     }
 
@@ -63,7 +68,7 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Share Prescription',
+          _t('share_prescription'),
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
         ),
       ),
@@ -71,7 +76,7 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         child: Column(
           children: [
-            // NFC / Sharing Header Illustration
+            // NFC / Sharing Header
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -95,11 +100,11 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tap Card or Scan QR',
+                          _t('tap_card_or_scan_qr'),
                           style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                         ),
                         Text(
-                          'Tap your SwasthyaTap NFC Card or show this QR at any pharmacy.',
+                          _t('share_instructions'),
                           style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                         ),
                       ],
@@ -130,7 +135,6 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Mock QR Image
                     Container(
                       width: 200,
                       height: 200,
@@ -156,12 +160,11 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Prescription ID & Verified Badge
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Prescription ID: ',
+                          _t('prescription_id_label'),
                           style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                         Text(
@@ -179,9 +182,8 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Dr details
                     Text(
-                      '${rx.doctorName} • ${rx.hospitalName}',
+                      '${_tm(rx.doctorName)} • ${_tm(rx.hospitalName)}',
                       style: GoogleFonts.poppins(fontSize: 11.5, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -194,7 +196,7 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4), // Soft green tint
+                color: const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFDCFCE7)),
               ),
@@ -208,12 +210,12 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Secure Sharing Enabled',
+                          _t('secure_sharing_enabled'),
                           style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF166534)),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Only this active prescription will be shared. No lab reports, MRI scans, or personal history are visible to the pharmacy.',
+                          _t('secure_sharing_desc'),
                           style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF15803D), height: 1.35),
                         ),
                       ],
@@ -231,14 +233,14 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Prescription ID copied to clipboard.'),
+                        SnackBar(
+                          content: Text(_t('id_copied_msg')),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },
                     icon: const Icon(Icons.copy_rounded, size: 14),
-                    label: const Text('Copy ID'),
+                    label: Text(_t('copy_id_btn')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textPrimary,
                       side: const BorderSide(color: AppTheme.borderColor),
@@ -252,7 +254,10 @@ class _PrescriptionShareScreenState extends State<PrescriptionShareScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _refreshQR,
                     icon: const Icon(Icons.refresh_rounded, size: 14, color: Colors.white),
-                    label: const Text('Refresh QR'),
+                    label: Text(
+                      _t('refresh_qr_btn'),
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentTeal,
                       elevation: 0,

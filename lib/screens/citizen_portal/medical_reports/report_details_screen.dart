@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../providers/swasthya_tap_provider.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/translation_service.dart';
+import '../../../utils/medical_translation_service.dart';
 import 'pdf_viewer_screen.dart';
 import 'report_info_screen.dart';
 
@@ -26,6 +28,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   final _notesController = TextEditingController();
   bool _isEditingNotes = false;
 
+  String _t(String key) => TranslationService.t(context, key);
+  String _tm(String value) => MedicalTranslationService.translate(context, value);
+
   @override
   void dispose() {
     _notesController.dispose();
@@ -36,7 +41,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<SwasthyaTapProvider>(context);
     
-    // Find the report (handle cases where it might have been deleted)
     HealthReport? report;
     try {
       report = provider.healthReports.firstWhere((r) => r.id == widget.reportId);
@@ -54,15 +58,14 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: const Center(
-          child: Text('Report not found or has been deleted.'),
+        body: Center(
+          child: Text(_t('report_not_found')),
         ),
       );
     }
 
     _notesController.text = report.notes;
 
-    // Parameter counts for high-fidelity look
     int totalParams = 23;
     int normalParams = 20;
     int highParams = 2;
@@ -79,7 +82,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       backgroundColor: AppTheme.lightBg,
       appBar: AppBar(
         title: Text(
-          'Report Details',
+          _t('report_details'),
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
         ),
         leading: IconButton(
@@ -89,7 +92,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
-            tooltip: 'Options',
+            tooltip: _t('options'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -144,7 +147,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              report.reportName,
+                              _tm(report.reportName),
                               style: GoogleFonts.poppins(
                                 fontSize: 15.5,
                                 fontWeight: FontWeight.bold,
@@ -172,7 +175,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          report.isAbnormal ? 'Abnormal' : 'Normal',
+                          report.isAbnormal ? _t('abnormal') : _t('normal'),
                           style: GoogleFonts.poppins(
                             fontSize: 10.5,
                             fontWeight: FontWeight.bold,
@@ -190,12 +193,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Hospital / Lab',
+                              _t('hospital_lab_label'),
                               style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              report.hospitalName,
+                              _tm(report.hospitalName),
                               style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -208,12 +211,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Doctor',
+                              _t('doctor_label'),
                               style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              report.doctorName,
+                              _tm(report.doctorName),
                               style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -231,7 +234,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Record ID',
+                              _t('record_id'),
                               style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                             ),
                             const SizedBox(height: 2),
@@ -247,7 +250,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Uploaded On',
+                              _t('uploaded_on'),
                               style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                             ),
                             const SizedBox(height: 2),
@@ -267,7 +270,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
             // 2. Report Files / Attachments
             Text(
-              'Report Files',
+              _t('report_files'),
               style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 10),
@@ -278,12 +281,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             ],
             const SizedBox(height: 20),
 
-            // 3. Parameter Summary Card (Mock laboratory visualizer)
+            // 3. Parameter Summary Card
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Report Summary',
+                  _t('report_summary'),
                   style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                 ),
                 TextButton(
@@ -296,7 +299,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     );
                   },
                   child: Text(
-                    'View Full Report',
+                    _t('view_full_report'),
                     style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentTeal),
                   ),
                 ),
@@ -313,10 +316,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildSummaryItem('Total Parameters', totalParams.toString(), AppTheme.textPrimary),
-                  _buildSummaryItem('Normal', normalParams.toString(), AppTheme.accentGreen),
-                  _buildSummaryItem('High', highParams.toString(), AppTheme.accentRed),
-                  _buildSummaryItem('Low', lowParams.toString(), Colors.orange),
+                  _buildSummaryItem(_t('total_parameters'), totalParams.toString(), AppTheme.textPrimary),
+                  _buildSummaryItem(_t('normal_summary'), normalParams.toString(), AppTheme.accentGreen),
+                  _buildSummaryItem(_t('high_summary'), highParams.toString(), AppTheme.accentRed),
+                  _buildSummaryItem(_t('low_summary'), lowParams.toString(), Colors.orange),
                 ],
               ),
             ),
@@ -324,7 +327,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
             // 4. Report Tags
             Text(
-              'Report Tags',
+              _t('report_tags'),
               style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 8),
@@ -332,7 +335,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               spacing: 8,
               children: report.tags.map((tag) {
                 return Chip(
-                  label: Text(tag, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.accentTeal)),
+                  label: Text(_tm(tag), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.accentTeal)),
                   backgroundColor: AppTheme.accentTeal.withOpacity(0.06),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -360,7 +363,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Patient Notes',
+                        _t('patient_notes'),
                         style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                       ),
                       IconButton(
@@ -369,11 +372,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                         constraints: const BoxConstraints(),
                         onPressed: () {
                           if (_isEditingNotes) {
-                            // Save note
                             provider.updateReportNotes(widget.reportId, _notesController.text.trim());
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Notes updated successfully!'),
+                              SnackBar(
+                                content: Text(_t('notes_updated_msg')),
                                 backgroundColor: AppTheme.accentTeal,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -393,7 +395,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           style: GoogleFonts.poppins(fontSize: 12.5, color: AppTheme.textPrimary),
                           maxLines: 4,
                           decoration: InputDecoration(
-                            hintText: 'Add clinical notes, symptoms experienced, or questions for doctor...',
+                            hintText: _t('add_notes_hint'),
                             hintStyle: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary.withOpacity(0.6)),
                             contentPadding: const EdgeInsets.all(12),
                             fillColor: AppTheme.lightBg,
@@ -405,7 +407,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                           ),
                         )
                       : Text(
-                          report.notes.isNotEmpty ? report.notes : 'No personal notes added yet. Tap edit icon to add symptoms or reminders.',
+                          report.notes.isNotEmpty ? report.notes : _t('no_personal_notes'),
                           style: GoogleFonts.poppins(
                             fontSize: 12.5,
                             color: report.notes.isNotEmpty ? AppTheme.textPrimary : AppTheme.textSecondary,
@@ -418,22 +420,22 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 6. Action Buttons Bottom Bar
+            // 6. Action Buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Downloading report...'),
+                        SnackBar(
+                          content: Text(_t('downloading_report')),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },
                     icon: const Icon(Icons.download_rounded, color: AppTheme.accentTeal),
                     label: Text(
-                      'Download',
+                      _t('download_label'),
                       style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.accentTeal),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -448,15 +450,15 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Preparing sharing options...'),
+                        SnackBar(
+                          content: Text(_t('preparing_sharing')),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },
                     icon: const Icon(Icons.share_rounded, color: AppTheme.accentTeal),
                     label: Text(
-                      'Share',
+                      _t('share_label'),
                       style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.accentTeal),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -472,7 +474,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     provider.toggleReportFavorite(widget.reportId);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(report!.isFavorite ? 'Removed from favorites' : 'Added to favorites'),
+                        content: Text(report!.isFavorite ? _t('removed_from_favorites') : _t('added_favorites')),
                         backgroundColor: AppTheme.accentTeal,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -544,7 +546,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Downloading $fileName...'),
+                  content: Text('${_t('downloading_file').replaceAll('{}', fileName)}'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );

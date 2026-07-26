@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../providers/swasthya_tap_provider.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/translation_service.dart';
+import '../../../utils/medical_translation_service.dart';
 import 'prescription_details_screen.dart';
 import 'prescription_share_screen.dart';
 import 'prescription_history_screen.dart';
@@ -20,9 +22,12 @@ class PrescriptionsDashboardScreen extends StatefulWidget {
 
 class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScreen> {
   String _searchQuery = '';
-  String _selectedFilter = 'All'; // 'All', 'Active', 'Completed', 'Expired', 'Draft'
+  String _selectedFilter = 'All';
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+
+  String _t(String key) => TranslationService.t(context, key);
+  String _tm(String value) => MedicalTranslationService.translate(context, value);
 
   @override
   void dispose() {
@@ -30,12 +35,28 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
     super.dispose();
   }
 
+  String _localizedFilter(String filter) {
+    switch (filter) {
+      case 'All': return _t('all_filter');
+      case 'Active': return _t('active_filter');
+      case 'Completed': return _t('completed_filter');
+      case 'Expired': return _t('expired_filter');
+      default: return filter;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SwasthyaTapProvider>(context);
     final allPrescriptions = provider.prescriptions;
+    MedicalProfile? citizen;
+    try {
+      citizen = provider.currentCitizen;
+    } catch (_) {
+      citizen = null;
+    }
+    final firstName = (citizen?.fullName ?? '').split(' ').first;
 
-    // Filter prescriptions
     final filteredPrescriptions = allPrescriptions.where((p) {
       final matchesSearch = p.doctorName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           p.hospitalName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -47,7 +68,6 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
       return matchesSearch && matchesFilter;
     }).toList();
 
-    // Summary stats
     final activeCount = allPrescriptions.where((p) => p.status == 'Active').length;
     final totalCount = allPrescriptions.length;
     final medicinesToday = allPrescriptions
@@ -64,13 +84,13 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'My Prescriptions',
+          _t('my_prescriptions'),
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded, color: AppTheme.textPrimary),
-            tooltip: 'Timeline History',
+            tooltip: _t('timeline_history'),
             onPressed: () {
               Navigator.push(
                 context,
@@ -80,7 +100,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.textPrimary),
-            tooltip: 'Scan Prescription QR',
+            tooltip: _t('scan_prescription_qr'),
             onPressed: () => _showScanMockDialog(),
           ),
           const SizedBox(width: 8),
@@ -100,11 +120,13 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hi Rajesh 👋',
+                        firstName.isNotEmpty
+                            ? _t('hi_user').replaceAll('{}', firstName)
+                            : _t('hi_user').replaceAll('{}', ''),
                         style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                       ),
                       Text(
-                        'Stay healthy, Stay safe',
+                        _t('stay_healthy'),
                         style: GoogleFonts.poppins(fontSize: 12.5, color: AppTheme.textSecondary),
                       ),
                     ],
@@ -144,7 +166,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search doctor, medicine or diagnosis...',
+                      hintText: _t('search_placeholder'),
                       hintStyle: GoogleFonts.poppins(fontSize: 12.5, color: AppTheme.textSecondary.withOpacity(0.7)),
                       border: InputBorder.none,
                       prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 18),
@@ -153,7 +175,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                   ),
                 ).animate().fadeIn(duration: 200.ms).slideY(begin: -0.1, end: 0),
 
-              // Dashboard Summary Card (Glassmorphism + soft teal gradient)
+              // Dashboard Summary Card
               if (!_isSearching && _selectedFilter == 'All')
                 Container(
                   width: double.infinity,
@@ -180,7 +202,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Prescription Summary',
+                            _t('prescription_summary'),
                             style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.9)),
                           ),
                           const Icon(Icons.assignment_turned_in_rounded, color: Colors.white, size: 20),
@@ -190,10 +212,10 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildStatItem('Active', '$activeCount'),
-                          _buildStatItem('Total', '$totalCount'),
-                          _buildStatItem('Daily Meds', '$medicinesToday'),
-                          _buildStatItem('Next Visit', '27 Jul'),
+                          _buildStatItem(_t('active_label'), '$activeCount'),
+                          _buildStatItem(_t('total_label'), '$totalCount'),
+                          _buildStatItem(_t('daily_meds'), '$medicinesToday'),
+                          _buildStatItem(_t('next_visit'), '27 Jul'),
                         ],
                       ),
                     ],
@@ -213,7 +235,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         label: Text(
-                          filter,
+                          _localizedFilter(filter),
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -242,7 +264,9 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _selectedFilter == 'All' ? 'Recent Prescriptions' : '$_selectedFilter Prescriptions',
+                    _selectedFilter == 'All'
+                        ? _t('recent_prescriptions')
+                        : _t('filter_prescriptions').replaceAll('{}', _localizedFilter(_selectedFilter)),
                     style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                   ),
                   if (allPrescriptions.length > 3 && _selectedFilter == 'All')
@@ -253,7 +277,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                         });
                       },
                       child: Text(
-                        'View All',
+                        _t('view_all'),
                         style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentTeal),
                       ),
                     ),
@@ -313,7 +337,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           const Icon(Icons.assignment_late_outlined, size: 48, color: AppTheme.textSecondary),
           const SizedBox(height: 12),
           Text(
-            'No matching prescriptions found.',
+            _t('no_matching_prescriptions'),
             style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
           ),
         ],
@@ -347,7 +371,6 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Doctor photo avatar
               Container(
                 width: 44,
                 height: 44,
@@ -366,11 +389,11 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      rx.doctorName,
+                      _tm(rx.doctorName),
                       style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                     ),
                     Text(
-                      rx.hospitalName,
+                      _tm(rx.hospitalName),
                       style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                     ),
                   ],
@@ -383,7 +406,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  rx.status,
+                  _tm(rx.status),
                   style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.bold, color: badgeColor),
                 ),
               ),
@@ -391,7 +414,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           ),
           const SizedBox(height: 12),
 
-          // Diagnosis & Timing details
+          // Diagnosis & Date
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -399,11 +422,11 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Diagnosis',
+                    _t('medicines_label'),
                     style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
                   ),
                   Text(
-                    rx.diagnosis,
+                    _tm(rx.diagnosis),
                     style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                   ),
                 ],
@@ -412,7 +435,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Prescribed On',
+                    _t('prescribed_date'),
                     style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
                   ),
                   Text(
@@ -443,7 +466,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                     );
                   },
                   icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
-                  label: const Text('View'),
+                  label: Text(_t('view_label')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.textPrimary,
                     side: const BorderSide(color: AppTheme.borderColor),
@@ -469,7 +492,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                     );
                   },
                   icon: const Icon(Icons.g_translate_rounded, size: 14),
-                  label: const Text('Translate'),
+                  label: Text(_t('translate_label')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.accentTeal,
                     side: const BorderSide(color: AppTheme.borderColor),
@@ -504,6 +527,25 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
   }
 
   Widget _buildUpcomingReminderCard(BuildContext context) {
+    final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+    final activePrescriptions = provider.prescriptions.where((p) => p.status == 'Active').toList();
+
+    // Get first non-taken night med, or first med overall
+    String medName = '';
+    String medTiming = '';
+    if (activePrescriptions.isNotEmpty) {
+      for (var rx in activePrescriptions) {
+        for (var med in rx.medicines) {
+          if (!med.isTakenToday) {
+            medName = _tm(med.name);
+            medTiming = med.night ? _t('night_dose') : (med.afternoon ? _t('afternoon_dose') : _t('morning_dose'));
+            break;
+          }
+        }
+        if (medName.isNotEmpty) break;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -511,7 +553,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Upcoming Dose Reminder',
+              _t('upcoming_dose_reminder'),
               style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
             GestureDetector(
@@ -524,7 +566,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                 );
               },
               child: Text(
-                'Full Schedule',
+                _t('full_schedule'),
                 style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentTeal),
               ),
             ),
@@ -534,7 +576,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF7ED), // Soft orange background
+            color: const Color(0xFFFFF7ED),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFFFEDD5)),
           ),
@@ -554,21 +596,22 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Paracetamol 650mg',
+                      medName.isNotEmpty ? medName : _t('no_meds_scheduled'),
                       style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                     ),
-                    Text(
-                      'After Dinner • 8:00 PM',
-                      style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
-                    ),
+                    if (medTiming.isNotEmpty)
+                      Text(
+                        medTiming,
+                        style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
+                      ),
                   ],
                 ),
               ),
               ElevatedButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Dose marked as taken!'),
+                    SnackBar(
+                      content: Text(_t('dose_marked_taken')),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -580,7 +623,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                   elevation: 0,
                 ),
                 child: Text(
-                  'Take',
+                  _t('take_label'),
                   style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -598,18 +641,18 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            'Scan Prescription QR',
+            _t('scan_prescription_qr'),
             style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           content: Text(
-            'Simulate scanning a digital prescription QR code from the Hospital Portal?',
+            _t('scan_mock_prompt'),
             style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
-                'Cancel',
+                _t('cancel_btn'),
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
               ),
             ),
@@ -617,8 +660,8 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
               onPressed: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Prescription QR verified successfully! Added to your account.'),
+                  SnackBar(
+                    content: Text(_t('qr_verified_success')),
                     backgroundColor: Colors.green,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -629,7 +672,7 @@ class _PrescriptionsDashboardScreenState extends State<PrescriptionsDashboardScr
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
-                'Verify & Add',
+                _t('verify_add_btn'),
                 style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),

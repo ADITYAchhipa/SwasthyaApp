@@ -199,9 +199,9 @@ keys = [
         'Urdu': 'آپ کا ہیلتھ کارڈ صرف ایک تصدیق دور ہے'
     }),
     ('mobile_number', {
-        'English': 'Email Address', 'Hindi': 'ईमेल पता', 'Bengali': 'ইমেল ঠিকানা', 'Telugu': 'ఇమెయిల్ చిరునామా',
-        'Tamil': 'மின்னஞ்சல் முகவரி', 'Marathi': 'ईमेल पत्ता', 'Gujarati': 'ઇમેઇલ સરનામું', 'Kannada': 'ಇಮೇಲ್ ವಿಳಾಸ',
-        'Malayalam': 'ഇമെയിൽ വിലാസം', 'Punjabi': 'ਈਮੇਲ ਪਤਾ', 'Odia': 'ଇମେଲ୍ ଠିକଣା', 'Urdu': 'ای میل ایڈریس'
+        'English': 'Mobile Number', 'Hindi': 'मोबाइल नंबर', 'Bengali': 'মোবাইল নম্বর', 'Telugu': 'మొబైల్ నంబర్',
+        'Tamil': 'கைபேసి எண்', 'Marathi': 'मोबाईल नंबर', 'Gujarati': 'મોબાઈલ નંબર', 'Kannada': 'ಮೊಬైಲ್ ಸಂಖ್ಯೆ',
+        'Malayalam': 'മൊബൈൽ നമ്പർ', 'Punjabi': 'ਮੋਬਾਈਲ ਨੰਬਰ', 'Odia': 'ମୋବାଇଲ୍ ନମ୍ବର', 'Urdu': 'موبائل نمبر'
     }),
     ('enter_hint', {
         'English': 'Enter email address', 'Hindi': 'ईमेल पता दर्ज करें', 'Bengali': 'ইমেল ঠিকানা লিখুন',

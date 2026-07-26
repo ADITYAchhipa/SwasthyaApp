@@ -7,9 +7,13 @@ import '../../widgets/glass_card.dart';
 import '../../models/models.dart';
 import 'declare_blood_emergency.dart';
 import 'emergency_blood_map.dart';
+import 'nfc_writer_screen.dart';
+import 'add_prescription_screen.dart';
+import 'upload_report_screen.dart';
 import '../../services/api_service.dart';
 import '../onboarding_screen.dart';
 import '../../utils/translation_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HospitalDashboard extends StatefulWidget {
   const HospitalDashboard({Key? key}) : super(key: key);
@@ -33,14 +37,55 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     super.dispose();
   }
 
-  void _searchPatient(SwasthyaTapProvider provider) {
+  bool _isLoadingPatient = false;
+
+  void _searchPatient(SwasthyaTapProvider provider) async {
     final slug = _searchController.text.trim().toLowerCase();
     if (slug.isEmpty) return;
+
+    setState(() {
+      _isLoadingPatient = true;
+      _hasSearched = false;
+      _searchedProfile = null;
+    });
+
+    try {
+      final profile = await ApiService.getCitizen(slug);
+      if (profile != null) {
+        // Also update local cache in provider if present
+        final idx = provider.profiles.indexWhere((p) => p.id == profile.id);
+        if (idx != -1) {
+          provider.profiles[idx] = profile;
+        } else {
+          provider.profiles.add(profile);
+        }
+        setState(() {
+          _searchedProfile = profile;
+          _hasSearched = true;
+          _organConsentVerified = false;
+          _isLoadingPatient = false;
+        });
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error fetching patient from backend: $e');
+    }
+
+    // Local fallback
     try {
       final profile = provider.profiles.firstWhere((p) => p.id.toLowerCase() == slug);
-      setState(() { _searchedProfile = profile; _hasSearched = true; _organConsentVerified = false; });
+      setState(() {
+        _searchedProfile = profile;
+        _hasSearched = true;
+        _organConsentVerified = false;
+        _isLoadingPatient = false;
+      });
     } catch (_) {
-      setState(() { _searchedProfile = null; _hasSearched = true; });
+      setState(() {
+        _searchedProfile = null;
+        _hasSearched = true;
+        _isLoadingPatient = false;
+      });
     }
   }
 
@@ -105,6 +150,19 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           },
         ),
         actions: [
+          // NFC Writer button
+          IconButton(
+            icon: const Icon(Icons.nfc_rounded, color: AppTheme.accentTeal),
+            tooltip: 'NFC Card Writer',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NfcWriterScreen(
+                  prefillSwasthyaId: _searchedProfile?.id,
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
@@ -136,7 +194,28 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             _searchBox(provider),
             const SizedBox(height: 20),
 
+            // Clinical Operations Shortcuts
+            Text(
+              'Clinical Operations', 
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Quickly write a prescription or upload a medical report', 
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            _buildClinicalShortcuts(provider),
+            const SizedBox(height: 24),
+
             // Results
+            if (_isLoadingPatient)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24.0),
+                  child: CircularProgressIndicator(color: AppTheme.accentTeal),
+                ),
+              ),
             if (_hasSearched) ...[
               if (_searchedProfile != null) ...[
                 Row(
@@ -369,9 +448,107 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
               ),
             ),
           ],
+          
+          // ── Clinical Actions ────────────────────────────────────────
+          const Divider(height: 24),
+          const Text('Clinical Actions', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentTeal, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AddPrescriptionScreen(
+                        profile: profile,
+                        onProfileUpdated: (updatedProfile) {
+                          setState(() {
+                            _searchedProfile = updatedProfile;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.note_add_rounded, size: 16, color: Colors.white),
+                  label: const Text(
+                    'Add Prescription',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentTeal,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UploadReportScreen(
+                        profile: profile,
+                        onProfileUpdated: (updatedProfile) {
+                          setState(() {
+                            _searchedProfile = updatedProfile;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.upload_file_rounded, size: 16, color: Colors.white),
+                  label: const Text(
+                    'Upload Report',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 11),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentAmber,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // ── NFC Card Writer CTA ──────────────────────────────────────
+          const Divider(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NfcWriterScreen(
+                    prefillSwasthyaId: profile.id,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.nfc_rounded, size: 16, color: Colors.white),
+              label: const Text(
+                'Write NFC Card for This Patient',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentTeal.withOpacity(0.15),
+                foregroundColor: AppTheme.accentTeal,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppTheme.accentTeal, width: 1.5),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
+
   }
 
   Widget _detailRow(IconData icon, String title, String value, Color valueColor) {
@@ -530,6 +707,272 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           ),
         ).animate().fade(delay: (index * 80).ms).slideY(begin: 0.05);
       },
+    );
+  }
+
+  Widget _buildClinicalShortcuts(SwasthyaTapProvider provider) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _promptSwasthyaIdAndNavigate(provider, true),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.borderColor),
+                boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 2))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentTeal.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.note_add_rounded, color: AppTheme.accentTeal, size: 24),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Add Prescription',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _searchedProfile != null 
+                        ? 'For ${_searchedProfile!.fullName}'
+                        : 'Select or write prescription details',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _promptSwasthyaIdAndNavigate(provider, false),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.borderColor),
+                boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 2))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentAmber.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.upload_file_rounded, color: AppTheme.accentAmber, size: 24),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Upload Report',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _searchedProfile != null 
+                        ? 'For ${_searchedProfile!.fullName}'
+                        : 'Upload patient blood/imaging scans',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _promptSwasthyaIdAndNavigate(SwasthyaTapProvider provider, bool isPrescription) {
+    if (_searchedProfile != null) {
+      _navigateToScreen(_searchedProfile!, isPrescription);
+      return;
+    }
+
+    final idController = TextEditingController();
+    bool isSearching = false;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Enter Swasthya ID',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Please enter the patient\'s 6-digit Swasthya ID to retrieve their medical record.',
+                    style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: idController,
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. x7k9m2',
+                      hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
+                      fillColor: const Color(0xFFF8FAFC),
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+                      ),
+                    ),
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      errorMessage!,
+                      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFF43F5E), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                  if (isSearching) ...[
+                    const SizedBox(height: 14),
+                    const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: AppTheme.accentTeal, strokeWidth: 2),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSearching ? null : () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF64748B)),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isSearching
+                      ? null
+                      : () async {
+                          final slug = idController.text.trim().toLowerCase();
+                          if (slug.isEmpty) return;
+
+                          setDialogState(() {
+                            isSearching = true;
+                            errorMessage = null;
+                          });
+
+                          try {
+                            // 1. Fetch from backend
+                            final profile = await ApiService.getCitizen(slug);
+                            if (profile != null) {
+                              // Cache in provider
+                              final idx = provider.profiles.indexWhere((p) => p.id == profile.id);
+                              if (idx != -1) {
+                                provider.profiles[idx] = profile;
+                              } else {
+                                provider.profiles.add(profile);
+                              }
+
+                              if (context.mounted) {
+                                Navigator.pop(context); // Close dialog
+                                _navigateToScreen(profile, isPrescription);
+                              }
+                              return;
+                            }
+                          } catch (e) {
+                            debugPrint('Error loading patient: $e');
+                          }
+
+                          // 2. Local Fallback
+                          try {
+                            final profile = provider.profiles.firstWhere((p) => p.id.toLowerCase() == slug);
+                            if (context.mounted) {
+                              Navigator.pop(context); // Close dialog
+                              _navigateToScreen(profile, isPrescription);
+                            }
+                          } catch (_) {
+                            setDialogState(() {
+                              isSearching = false;
+                              errorMessage = 'Patient profile not found. Please verify the ID.';
+                            });
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F766E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Retrieve',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _navigateToScreen(MedicalProfile profile, bool isPrescription) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => isPrescription
+            ? AddPrescriptionScreen(
+                profile: profile,
+                onProfileUpdated: (updatedProfile) {
+                  setState(() {
+                    if (_searchedProfile != null && _searchedProfile!.id == updatedProfile.id) {
+                      _searchedProfile = updatedProfile;
+                    }
+                  });
+                },
+              )
+            : UploadReportScreen(
+                profile: profile,
+                onProfileUpdated: (updatedProfile) {
+                  setState(() {
+                    if (_searchedProfile != null && _searchedProfile!.id == updatedProfile.id) {
+                      _searchedProfile = updatedProfile;
+                    }
+                  });
+                },
+              ),
+      ),
     );
   }
 }

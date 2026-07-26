@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1689,6 +1690,68 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   children: [
                     // Profile details card (no longer animated to avoid distortion/blurriness)
                     _buildProfileDetailsCard(context, provider, citizen),
+                    const SizedBox(height: 14),
+
+                    // ── SwasthyaTap ID Card ─────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0D3B36), Color(0xFF063028)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF00C896).withOpacity(0.35)),
+                        boxShadow: [BoxShadow(color: const Color(0xFF00C896).withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00C896).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.contactless_rounded, color: Color(0xFF00C896), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('SwasthyaTap ID', style: TextStyle(color: Color(0xFF00C896), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  citizen.id.toUpperCase(),
+                                  style: GoogleFonts.robotoMono(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 4,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                const Text('Share with hospital to write your NFC card', style: TextStyle(color: Color(0xFF64748B), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy_rounded, color: Color(0xFF00C896), size: 18),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: citizen.id));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('SwasthyaTap ID copied!'),
+                                  backgroundColor: Color(0xFF00C896),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 18),
 
                   // 11 Expandable Item Cards

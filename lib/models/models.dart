@@ -98,6 +98,7 @@ class MedicalProfile {
   final String? profileImage;
   final List<dynamic> medicalReports;
   final List<dynamic> receipts;
+  final List<dynamic> prescriptions;
 
   MedicalProfile({
     required this.id,
@@ -124,6 +125,7 @@ class MedicalProfile {
     this.profileImage,
     this.medicalReports = const [],
     this.receipts = const [],
+    this.prescriptions = const [],
   });
 
   // Generates offline NDEF JSON payload (max 8KB, keeps it lightweight)
@@ -170,6 +172,7 @@ class MedicalProfile {
     String? profileImage,
     List<dynamic>? medicalReports,
     List<dynamic>? receipts,
+    List<dynamic>? prescriptions,
   }) {
     return MedicalProfile(
       id: id,
@@ -196,6 +199,7 @@ class MedicalProfile {
       profileImage: profileImage ?? this.profileImage,
       medicalReports: medicalReports ?? this.medicalReports,
       receipts: receipts ?? this.receipts,
+      prescriptions: prescriptions ?? this.prescriptions,
     );
   }
 

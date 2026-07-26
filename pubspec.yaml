@@ -43,6 +43,7 @@ dependencies:
   pdf: ^3.13.0
   printing: ^5.15.0
   http: ^1.2.2
+  nfc_manager: ^3.5.0
   shared_preferences: ^2.3.2
 
 dev_dependencies:

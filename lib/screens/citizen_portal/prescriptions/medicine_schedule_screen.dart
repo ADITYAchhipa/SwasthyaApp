@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../providers/swasthya_tap_provider.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/translation_service.dart';
+import '../../../utils/medical_translation_service.dart';
 
 class MedicineScheduleScreen extends StatefulWidget {
   final Function(int)? onTabSelected;
@@ -14,12 +16,14 @@ class MedicineScheduleScreen extends StatefulWidget {
 }
 
 class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
+  String _t(String key) => TranslationService.t(context, key);
+  String _tm(String value) => MedicalTranslationService.translate(context, value);
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SwasthyaTapProvider>(context);
     final activePrescriptions = provider.prescriptions.where((p) => p.status == 'Active').toList();
 
-    // Group active medicines by time of day
     final List<Map<String, dynamic>> morningMeds = [];
     final List<Map<String, dynamic>> afternoonMeds = [];
     final List<Map<String, dynamic>> nightMeds = [];
@@ -33,7 +37,6 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
       }
     }
 
-    // Completion percentage logic
     int totalMedsCount = morningMeds.length + afternoonMeds.length + nightMeds.length;
     int takenMedsCount = 0;
 
@@ -59,7 +62,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Today's Medicines",
+          _t('todays_medicines'),
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
         ),
       ),
@@ -69,22 +72,15 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Progress header card
               _buildProgressCard(completionPercent, takenMedsCount, totalMedsCount),
               const SizedBox(height: 20),
-
-              // Next Dose Banner
               _buildNextDoseBanner(),
               const SizedBox(height: 24),
-
-              // Timeline Sections
-              _buildTimelineSection("Morning Dose", morningMeds, Colors.amber, Icons.wb_sunny_rounded, provider),
+              _buildTimelineSection(_t('morning_dose'), morningMeds, Colors.amber, Icons.wb_sunny_rounded, provider),
               const SizedBox(height: 20),
-
-              _buildTimelineSection("Afternoon Dose", afternoonMeds, Colors.orange, Icons.wb_cloudy_rounded, provider),
+              _buildTimelineSection(_t('afternoon_dose'), afternoonMeds, Colors.orange, Icons.wb_cloudy_rounded, provider),
               const SizedBox(height: 20),
-
-              _buildTimelineSection("Night Dose", nightMeds, Colors.indigo, Icons.nightlight_round_rounded, provider),
+              _buildTimelineSection(_t('night_dose'), nightMeds, Colors.indigo, Icons.nightlight_round_rounded, provider),
             ],
           ),
         ),
@@ -102,7 +98,6 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
       ),
       child: Row(
         children: [
-          // Circular Progress Ring
           Stack(
             alignment: Alignment.center,
             children: [
@@ -128,11 +123,14 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Today's Completion",
+                  _t('todays_completion'),
                   style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 Text(
-                  "$taken of $total medicines taken today",
+                  _t('meds_taken_status').replaceAll('{}', taken.toString()).replaceAllMapped(
+                    RegExp(r'\{\}'),
+                    (m) => total.toString(),
+                  ).replaceFirst('{}', taken.toString()).replaceFirst('{}', total.toString()),
                   style: GoogleFonts.poppins(fontSize: 11.5, color: AppTheme.textSecondary),
                 ),
               ],
@@ -144,6 +142,15 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
   }
 
   Widget _buildNextDoseBanner() {
+    // Find first non-taken medicine in morning meds (simplified)
+    final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+    final activePrescriptions = provider.prescriptions.where((p) => p.status == 'Active').toList();
+    String nextMedName = '';
+    if (activePrescriptions.isNotEmpty && activePrescriptions.first.medicines.isNotEmpty) {
+      final med = activePrescriptions.first.medicines.first;
+      nextMedName = _tm(med.name);
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -157,7 +164,9 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "Next Dose: Vitamin C 500mg (Lunch • 12:30 PM)",
+              nextMedName.isNotEmpty
+                  ? '${_t('upcoming_dose_reminder')}: $nextMedName'
+                  : _t('upcoming_dose_reminder'),
               style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF166534), fontWeight: FontWeight.w600),
             ),
           ),
@@ -186,7 +195,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
             ),
             const Spacer(),
             Text(
-              list.isEmpty ? 'None' : '${list.length} Meds',
+              list.isEmpty ? _t('none') : '${list.length} ${_t('medicines_label')}',
               style: GoogleFonts.poppins(fontSize: 11.5, color: AppTheme.textSecondary),
             ),
           ],
@@ -201,7 +210,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                   border: Border.all(color: AppTheme.borderColor.withOpacity(0.5)),
                 ),
                 child: Text(
-                  'No medicines scheduled for this time slot.',
+                  _t('no_meds_scheduled'),
                   style: GoogleFonts.poppins(fontSize: 11.5, color: AppTheme.textSecondary),
                 ),
               )
@@ -226,7 +235,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                       title: Text(
-                        med.name,
+                        _tm(med.name),
                         style: GoogleFonts.poppins(
                           fontSize: 13.5,
                           fontWeight: FontWeight.bold,
@@ -234,7 +243,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        '${med.strength} • ${med.duration} • Dr. $doctor',
+                        '${med.strength} • ${_tm(med.duration)} • ${_tm(doctor)}',
                         style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
                       ),
                       leading: Checkbox(
@@ -242,6 +251,12 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                         activeColor: Colors.green,
                         onChanged: (val) {
                           provider.toggleMedicineTakenToday(rxId, med.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(_t('dose_marked_taken')),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         },
                       ),
                       trailing: IconButton(
@@ -269,7 +284,6 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header title
               Center(
                 child: Container(
                   width: 40,
@@ -286,11 +300,11 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          med.name,
+                          _tm(med.name),
                           style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                         ),
                         Text(
-                          'Dosage Strength: ${med.strength}',
+                          '${_t('dosage_strength').replaceAll('{}', med.strength)}',
                           style: GoogleFonts.poppins(fontSize: 12.5, color: AppTheme.textSecondary),
                         ),
                       ],
@@ -304,17 +318,25 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
               ),
               const Divider(height: 24, color: AppTheme.borderColor),
 
-              // Purpose / info rows
-              _buildDetailRow("Purpose", med.purpose, Icons.medical_services_outlined),
-              _buildDetailRow("How to Take", med.beforeFood ? "Take on empty stomach, before meals" : "Take after meals with water", Icons.restaurant_menu_outlined),
-              _buildDetailRow("Duration", "${med.duration} (Qty: ${med.quantity})", Icons.calendar_today_outlined),
-              _buildDetailRow("Side Effects", med.sideEffects, Icons.warning_amber_rounded),
-              _buildDetailRow("Storage", med.storage, Icons.thermostat_outlined),
-              _buildDetailRow("Alternatives", med.alternatives, Icons.swap_horiz_rounded),
+              _buildDetailRow(_t('purpose_label'), _tm(med.purpose), Icons.medical_services_outlined),
+              _buildDetailRow(
+                _t('how_to_take_label'),
+                med.beforeFood
+                    ? TranslationService.t(context, 'take_before_food')
+                    : TranslationService.t(context, 'take_after_food'),
+                Icons.restaurant_menu_outlined,
+              ),
+              _buildDetailRow(
+                _t('duration_qty').replaceFirst('{}', _tm(med.duration)).replaceFirst('{}', med.quantity),
+                '',
+                Icons.calendar_today_outlined,
+              ),
+              _buildDetailRow(_t('side_effects_label'), _tm(med.sideEffects), Icons.warning_amber_rounded),
+              _buildDetailRow(_t('storage_label'), _tm(med.storage), Icons.thermostat_outlined),
+              _buildDetailRow(_t('alternatives_label'), _tm(med.alternatives), Icons.swap_horiz_rounded),
 
               const SizedBox(height: 24),
 
-              // Action Buttons
               Row(
                 children: [
                   Expanded(
@@ -322,14 +344,14 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Medicine reminder notifications activated.'),
+                          SnackBar(
+                            content: Text(_t('reminder_activated_msg')),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                       },
                       icon: const Icon(Icons.alarm_add_rounded, size: 16),
-                      label: const Text('Set Reminder'),
+                      label: Text(_t('set_reminder_btn')),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.accentTeal,
                         side: const BorderSide(color: AppTheme.accentTeal),
@@ -349,7 +371,7 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        'Close Details',
+                        _t('close_details'),
                         style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
@@ -379,10 +401,11 @@ class _MedicineScheduleScreenState extends State<MedicineScheduleScreen> {
                   label,
                   style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                 ),
-                Text(
-                  val.isEmpty ? 'None' : val,
-                  style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
-                ),
+                if (val.isNotEmpty)
+                  Text(
+                    val,
+                    style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                  ),
               ],
             ),
           ),

@@ -12,6 +12,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const Citizen = require('../models/Citizen');
 const Hospital = require('../models/Hospital');
+const NfcCard = require('../models/NfcCard');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
 
@@ -29,7 +30,8 @@ async function seed() {
   // ─── Clear existing data ──────────────────────────────────────────────────
   await Citizen.deleteMany({});
   await Hospital.deleteMany({});
-  console.log('🗑️  Cleared existing citizens and hospitals.\n');
+  await NfcCard.deleteMany({});
+  console.log('🗑️  Cleared existing citizens, hospitals, and NFC mappings.\n');
 
   // ─── Citizens ─────────────────────────────────────────────────────────────
   const dateStr = new Date().toISOString().split('T')[0];
@@ -74,6 +76,15 @@ async function seed() {
           date: '18 Jun 2026',
           status_key: 'verified_report',
           doctor_key: 'dr_amit_shah',
+          sampleType: 'Whole Blood (EDTA)',
+          labRefNo: 'LAB-CBC-9921',
+          testParameters: [
+            { parameter: 'Hemoglobin', result: '14.2 g/dL', normalRange: '13.0 - 17.0 g/dL', status: 'Normal' },
+            { parameter: 'RBC Count', result: '4.8 M/µL', normalRange: '4.5 - 5.5 M/µL', status: 'Normal' },
+            { parameter: 'WBC Count', result: '7,200 /µL', normalRange: '4,000 - 11,000 /µL', status: 'Normal' },
+            { parameter: 'Platelet Count', result: '240,000 /µL', normalRange: '150,000 - 450,000 /µL', status: 'Normal' }
+          ],
+          doctorRemarks: 'All hematological parameters within normal reference ranges.'
         },
         {
           title_key: 'lipid_profile',
@@ -81,6 +92,15 @@ async function seed() {
           date: '10 May 2026',
           status_key: 'verified_report',
           doctor_key: 'dr_patel',
+          sampleType: 'Fasting Blood Serum',
+          labRefNo: 'LAB-LIPID-8834',
+          testParameters: [
+            { parameter: 'Total Cholesterol', result: '195 mg/dL', normalRange: '< 200 mg/dL', status: 'Normal' },
+            { parameter: 'Triglycerides', result: '140 mg/dL', normalRange: '< 150 mg/dL', status: 'Normal' },
+            { parameter: 'HDL Cholesterol', result: '48 mg/dL', normalRange: '> 40 mg/dL', status: 'Optimal' },
+            { parameter: 'LDL Cholesterol', result: '119 mg/dL', normalRange: '< 130 mg/dL', status: 'Normal' }
+          ],
+          doctorRemarks: 'Lipid panel desirable. Continue current dietary habits.'
         },
         {
           title_key: 'thyroid_report',
@@ -88,6 +108,14 @@ async function seed() {
           date: '24 Apr 2026',
           status_key: 'verified_report',
           doctor_key: 'dr_singh',
+          sampleType: 'Blood Serum',
+          labRefNo: 'LAB-THY-4401',
+          testParameters: [
+            { parameter: 'TSH (Thyroid Stimulating Hormone)', result: '2.45 µIU/mL', normalRange: '0.55 - 4.78 µIU/mL', status: 'Normal' },
+            { parameter: 'Total T3', result: '1.15 ng/mL', normalRange: '0.80 - 2.00 ng/mL', status: 'Normal' },
+            { parameter: 'Total T4', result: '8.2 µg/dL', normalRange: '5.1 - 14.1 µg/dL', status: 'Normal' }
+          ],
+          doctorRemarks: 'Euthyroid state confirmed.'
         },
         {
           title_key: 'chest_xray',
@@ -95,6 +123,14 @@ async function seed() {
           date: '15 Feb 2026',
           status_key: 'verified_report',
           doctor_key: 'dr_amit_shah',
+          sampleType: 'Radiology Imaging (PA View)',
+          labRefNo: 'RAD-XRAY-1092',
+          testParameters: [
+            { parameter: 'Lung Fields', result: 'Clear bilateral lung fields', normalRange: 'Clear', status: 'Normal' },
+            { parameter: 'Cardiac Shadow', result: 'Normal cardiac size & contour', normalRange: 'Normal CTR', status: 'Normal' },
+            { parameter: 'Costophrenic Angles', result: 'Sharp & clear', normalRange: 'Clear', status: 'Normal' }
+          ],
+          doctorRemarks: 'No focal consolidation, effusion or pneumothorax.'
         }
       ],
       receipts: [
@@ -118,6 +154,37 @@ async function seed() {
           date: '12 May 2026',
           amount: '₹1,500',
           status_key: 'paid',
+        }
+      ],
+      prescriptions: [
+        {
+          prescriptionId: 'RX-2026-891',
+          doctorName: 'Dr. Amit Shah',
+          qualification: 'MD (Cardiology), FACC',
+          hospitalName: 'Apollo Speciality Hospital',
+          date: '20 Jun 2026',
+          diagnosis: 'Mild Hypertension & Preventive Checkup',
+          rxList: [
+            { medicineName: 'Telmisartan 40mg', dosage: '1 Tablet', frequency: 'Once Daily (Morning)', duration: '30 Days', instructions: 'Take after breakfast with water' },
+            { medicineName: 'Amlodipine 5mg', dosage: '1 Tablet', frequency: 'Once Daily (Night)', duration: '30 Days', instructions: 'Take before sleep' },
+            { medicineName: 'Multivitamin Complex', dosage: '1 Capsule', frequency: 'Once Daily', duration: '15 Days', instructions: 'Take after meal' }
+          ],
+          doctorNotes: 'Maintain low sodium diet, 30 mins morning walk recommended. Follow up after 1 month with BP log.',
+          status: 'Active'
+        },
+        {
+          prescriptionId: 'RX-2026-442',
+          doctorName: 'Dr. Patel',
+          qualification: 'MBBS, MD (General Medicine)',
+          hospitalName: 'City Care Clinic',
+          date: '10 May 2026',
+          diagnosis: 'Acute Upper Respiratory Tract Infection',
+          rxList: [
+            { medicineName: 'Amoxicillin 500mg', dosage: '1 Capsule', frequency: 'Thrice Daily (8hrly)', duration: '5 Days', instructions: 'Complete full course' },
+            { medicineName: 'Paracetamol 650mg', dosage: '1 Tablet', frequency: 'As needed for fever', duration: '5 Days', instructions: 'Max 3 tablets per day' }
+          ],
+          doctorNotes: 'Drink warm water and steam inhalation twice daily.',
+          status: 'Completed'
         }
       ],
     },
@@ -221,6 +288,19 @@ async function seed() {
   await Citizen.insertMany(citizens);
   console.log(`✅ Seeded ${citizens.length} demo citizens:`);
   citizens.forEach((c) => console.log(`   → ${c.fullName} (${c.profileId}) — ${c.bloodGroup}`));
+
+  const rajeshCitizen = await Citizen.findOne({ profileId: 'x7k9m2' });
+  if (rajeshCitizen) {
+    const rawToken = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await NfcCard.create({
+      patientId: rajeshCitizen._id,
+      hashedToken,
+      publicCardId: 'card-uuid-rajesh-12345',
+      status: 'active',
+    });
+    console.log(`✅ Seeded NFC card mapping for Rajesh Kumar (Token: '${rawToken}')`);
+  }
 
   // ─── Hospitals ────────────────────────────────────────────────────────────
   const hospitals = [

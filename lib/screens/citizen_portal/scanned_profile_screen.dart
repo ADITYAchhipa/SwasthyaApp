@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/translation_service.dart';
+import '../../utils/medical_translation_service.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../utils/pdf_downloader.dart';
 import 'card_viewer_screen.dart'; // To reuse HeartEcgPainter
 
 class ScannedProfileScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class ScannedProfileScreen extends StatefulWidget {
 
 class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
   String _t(String key) => TranslationService.t(context, key);
+  String _tm(String value) => MedicalTranslationService.translate(context, value);
 
   late Future<MedicalProfile?> _profileFuture;
 
@@ -31,6 +34,10 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
   bool _conditionsExpanded = true;
   bool _contactsExpanded = true;
   bool _insuranceExpanded = true;
+
+  // Prescriptions Search and Filter state
+  String _rxSearchQuery = '';
+  String _rxStatusFilter = 'All';
 
   // Mock JSON representing what will come from the backend for receipts
   final List<Map<String, dynamic>> _receiptsJson = [
@@ -204,7 +211,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                 tabs: [
                   Tab(text: _t('nav_profile')),
                   Tab(text: _t('reports_label')),
-                  Tab(text: _t('receipts_label')),
+                  Tab(text: _tm('prescriptions_label')),
                 ],
               ),
             ),
@@ -212,7 +219,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
               children: [
                 _buildProfileTab(profile),
                 _buildReportsTab(profile),
-                _buildReceiptsTab(profile),
+                _buildPrescriptionsTab(profile),
               ],
             ),
           ),
@@ -369,7 +376,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    profile.age != null ? '${profile.age} ${_t('years')}' : 'Unknown Age',
+                                    profile.age != null ? '${profile.age} ${_t('years')}' : _tm('unknown_age'),
                                     style: GoogleFonts.inter(
                                       fontSize: 13.5,
                                       color: const Color(0xFF475569),
@@ -395,7 +402,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                                 const Icon(Icons.water_drop_rounded, color: Color(0xFFDC2626), size: 20),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'BLOOD GROUP METRIC',
+                                  _t('blood_group'),
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
@@ -472,7 +479,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                     child: Text(
-                                      _t('none'),
+                                      _tm('none'),
                                       style: GoogleFonts.inter(
                                         color: const Color(0xFF64748B),
                                         fontSize: 13,
@@ -506,14 +513,14 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                           ? [
                               Padding(
                                 padding: const EdgeInsets.all(12.0),
-                                child: Text(_t('none'), style: GoogleFonts.inter(color: Colors.grey)),
+                                child: Text(_tm('none'), style: GoogleFonts.inter(color: Colors.grey)),
                               )
                             ]
                           : profile.medications
                               .split(',')
                               .map((m) => m.trim())
                               .where((m) => m.isNotEmpty)
-                              .map((m) => _buildMedicationRow(m, 'As Prescribed', 'Daily'))
+                              .map((m) => _buildMedicationRow(_tm(m), _tm('As Prescribed'), _tm('Daily')))
                               .toList(),
                     ),
                   ).animate().fade(delay: 150.ms, duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
@@ -531,14 +538,14 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                           ? [
                               Padding(
                                 padding: const EdgeInsets.all(12.0),
-                                child: Text(_t('none'), style: GoogleFonts.inter(color: Colors.grey)),
+                                child: Text(_tm('none'), style: GoogleFonts.inter(color: Colors.grey)),
                               )
                             ]
                           : profile.chronicConditions
                               .split(',')
                               .map((c) => c.trim())
                               .where((c) => c.isNotEmpty)
-                              .map((c) => _buildConditionRow(c, 'Monitored', const Color(0xFFF97316)))
+                              .map((c) => _buildConditionRow(_tm(c), _tm('Monitored'), const Color(0xFFF97316)))
                               .toList(),
                     ),
                   ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
@@ -556,13 +563,13 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                           ? [
                               Padding(
                                 padding: const EdgeInsets.all(12.0),
-                                child: Text(_t('none'), style: GoogleFonts.inter(color: Colors.grey)),
+                                child: Text(_tm('none'), style: GoogleFonts.inter(color: Colors.grey)),
                               )
                             ]
                           : profile.emergencyContacts
                               .map((c) => Column(
                                     children: [
-                                      _buildContactRow(c.name, c.relation, c.phone),
+                                      _buildContactRow(c.name, _tm(c.relation), c.phone),
                                       const Divider(height: 1, color: Color(0xFFF1F5F9)),
                                     ],
                                   ))
@@ -596,7 +603,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  profile.insuranceCompany.isNotEmpty ? profile.insuranceCompany : 'No Active Insurance',
+                                  profile.insuranceCompany.isNotEmpty ? _tm(profile.insuranceCompany) : _tm('none'),
                                   style: GoogleFonts.inter(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -611,7 +618,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    profile.insuranceCompany.isNotEmpty ? 'ACTIVE' : 'INACTIVE',
+                                    profile.insuranceCompany.isNotEmpty ? _tm('active') : _tm('inactive'),
                                     style: GoogleFonts.inter(
                                       color: profile.insuranceCompany.isNotEmpty ? const Color(0xFF0369A1) : const Color(0xFF64748B),
                                       fontWeight: FontWeight.bold,
@@ -627,7 +634,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                'POLICY NO',
+                                _tm('POLICY NO'),
                                 style: GoogleFonts.inter(
                                   fontSize: 9.5,
                                   color: const Color(0xFF94A3B8),
@@ -677,8 +684,8 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                       child: InkWell(
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Simulating emergency alert broadcasts to family contacts...'),
+                            SnackBar(
+                              content: Text(_tm('simulating_emergency')),
                               backgroundColor: Color(0xFFDC2626),
                             ),
                           );
@@ -762,9 +769,9 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                             child: InkWell(
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Calling Emergency Services 108...'),
-                                    backgroundColor: Color(0xFF1E3A8A),
+                                  SnackBar(
+                                    content: Text(_tm('calling_emergency_108')),
+                                    backgroundColor: const Color(0xFF1E3A8A),
                                   ),
                                 );
                               },
@@ -842,9 +849,9 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                             child: InkWell(
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Preparing secure hospital telemetry stream...'),
-                                    backgroundColor: Color(0xFF0F766E),
+                                  SnackBar(
+                                    content: Text(_tm('preparing_telemetry')),
+                                    backgroundColor: const Color(0xFF0F766E),
                                   ),
                                 );
                               },
@@ -910,7 +917,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Telemetry data is encrypted. Accessed via SwasthyaTap NFC. HIPAA + DPDP Compliant.',
+                            _tm('telemetry_disclaimer'),
                             style: GoogleFonts.inter(
                               color: const Color(0xFF64748B),
                               fontSize: 9.5,
@@ -1018,7 +1025,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                         padding: const EdgeInsets.all(20.0),
                         child: Center(
                           child: Text(
-                            _t('none'),
+                            _tm('none'),
                             style: GoogleFonts.inter(
                               color: const Color(0xFF64748B),
                               fontSize: 14,
@@ -1034,10 +1041,11 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                             children: [
                               _buildReportRow(
                                 context: context,
-                                title: _t(report['title_key'] ?? ''),
-                                subtitle: '${_t(report['issuer_key'] ?? '')}  •  ${report['date'] ?? ''}',
-                                status: _t(report['status_key'] ?? ''),
-                                doctor: _t(report['doctor_key'] ?? ''),
+                                title: _tm(report['title_key'] ?? ''),
+                                subtitle: '${_tm(report['issuer_key'] ?? '')}  •  ${report['date'] ?? ''}',
+                                status: _tm(report['status_key'] ?? ''),
+                                doctor: _tm(report['doctor_key'] ?? ''),
+                                url: report['url'] ?? report['fileUrl'] ?? report['pdfUrl'],
                               ),
                               if (!isLast) const Divider(height: 1, color: Color(0xFFF1F5F9)),
                             ],
@@ -1058,6 +1066,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
     required String subtitle,
     required String status,
     required String doctor,
+    String? url,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1117,11 +1126,35 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          if (url != null && url.isNotEmpty) ...[
+            IconButton(
+              onPressed: () async {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Downloading medical report...')),
+                );
+                try {
+                  await downloadPdfFromUrl(url, '${title.replaceAll(" ", "_")}.pdf');
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error downloading report: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              icon: const Icon(Icons.download_rounded, size: 18, color: Color(0xFF0D9488)),
+              style: IconButton.styleFrom(
+                padding: const EdgeInsets.all(8),
+                backgroundColor: const Color(0xFFF0FDF4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Viewing Report: ' + title + '...'),
+                  content: Text(_tm('viewing_report_snack').replaceFirst('{}', title)),
                   duration: const Duration(seconds: 1),
                 ),
               );
@@ -1138,7 +1171,54 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
     );
   }
 
-  Widget _buildReceiptsTab(MedicalProfile profile) {
+  Widget _buildPrescriptionsTab(MedicalProfile profile) {
+    final rawList = profile.prescriptions.isNotEmpty
+        ? profile.prescriptions
+        : [
+            {
+              'prescriptionId': 'RX-2026-891',
+              'doctorName': 'Dr. Amit Shah',
+              'qualification': 'MD (Cardiology), FACC',
+              'hospitalName': 'Apollo Speciality Hospital',
+              'date': '20 Jun 2026',
+              'diagnosis': 'Mild Hypertension & Preventive Checkup',
+              'rxList': [
+                {'medicineName': 'Telmisartan 40mg', 'dosage': '1 Tablet', 'frequency': 'Once Daily (Morning)', 'duration': '30 Days', 'instructions': 'Take after breakfast'},
+                {'medicineName': 'Amlodipine 5mg', 'dosage': '1 Tablet', 'frequency': 'Once Daily (Night)', 'duration': '30 Days', 'instructions': 'Take before sleep'},
+                {'medicineName': 'Multivitamin Complex', 'dosage': '1 Capsule', 'frequency': 'Once Daily', 'duration': '15 Days', 'instructions': 'Take after meal'}
+              ],
+              'doctorNotes': 'Maintain low sodium diet, 30 mins morning walk recommended. Follow up after 1 month with BP log.',
+              'status': 'Active'
+            },
+            {
+              'prescriptionId': 'RX-2026-442',
+              'doctorName': 'Dr. Patel',
+              'qualification': 'MBBS, MD (General Medicine)',
+              'hospitalName': 'City Care Clinic',
+              'date': '10 May 2026',
+              'diagnosis': 'Acute Upper Respiratory Tract Infection',
+              'rxList': [
+                {'medicineName': 'Amoxicillin 500mg', 'dosage': '1 Capsule', 'frequency': 'Thrice Daily', 'duration': '5 Days', 'instructions': 'Complete full course'},
+                {'medicineName': 'Paracetamol 650mg', 'dosage': '1 Tablet', 'frequency': 'As needed for fever', 'duration': '5 Days', 'instructions': 'Max 3 tablets daily'}
+              ],
+              'doctorNotes': 'Drink warm water and steam inhalation twice daily.',
+              'status': 'Completed'
+            }
+          ];
+
+    final filteredList = rawList.where((rx) {
+      final rxMap = Map<String, dynamic>.from(rx as Map);
+      final docName = (rxMap['doctorName'] ?? '').toString().toLowerCase();
+      final hospName = (rxMap['hospitalName'] ?? '').toString().toLowerCase();
+      final diag = (rxMap['diagnosis'] ?? '').toString().toLowerCase();
+      final query = _rxSearchQuery.toLowerCase();
+
+      final matchesSearch = docName.contains(query) || hospName.contains(query) || diag.contains(query);
+      final matchesStatus = _rxStatusFilter == 'All' || (rxMap['status'] ?? 'Active') == _rxStatusFilter;
+
+      return matchesSearch && matchesStatus;
+    }).toList();
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Padding(
@@ -1146,19 +1226,19 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header Stats card for receipts
+            // Header Stats card for prescriptions
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFEA580C), Color(0xFFF97316)],
+                  colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF97316).withOpacity(0.2),
+                    color: const Color(0xFF0284C7).withOpacity(0.2),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -1172,7 +1252,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.medication_rounded, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -1180,7 +1260,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _t('billing_history_title'),
+                          _tm('digital_prescriptions'),
                           style: GoogleFonts.inter(
                             color: Colors.white,
                             fontSize: 16,
@@ -1189,7 +1269,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _t('invoices_paid_offline'),
+                          '${filteredList.length} ' + _tm('verified_rx_records'),
                           style: GoogleFonts.inter(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 12,
@@ -1204,146 +1284,462 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
             ).animate().fade(duration: 400.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
             const SizedBox(height: 16),
 
-            // Receipts List Container
+            // Search Bar Input
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: profile.receipts.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Center(
-                          child: Text(
-                            _t('none'),
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF64748B),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        children: profile.receipts.map((receipt) {
-                          final isLast = profile.receipts.indexOf(receipt) == profile.receipts.length - 1;
-                          return Column(
-                            children: [
-                              _buildReceiptRow(
-                                context: context,
-                                title: _t(receipt['title_key'] ?? ''),
-                                subtitle: '${_t(receipt['issuer_key'] ?? '')}  •  ${receipt['date'] ?? ''}',
-                                amount: receipt['amount'] ?? '',
-                                status: _t(receipt['status_key'] ?? ''),
-                                statusColor: const Color(0xFF16A34A),
-                              ),
-                              if (!isLast) const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                            ],
-                          );
-                        }).toList(),
-                      ),
+              child: TextField(
+                onChanged: (val) {
+                  setState(() {
+                    _rxSearchQuery = val;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: _tm('search_placeholder'),
+                  hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF64748B), size: 20),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                ),
               ),
-            ).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
+            ),
+            const SizedBox(height: 12),
+
+            // Status Filter Choice Chips
+            Row(
+              children: ['All', 'Active', 'Completed'].map((statusOption) {
+                final isSelected = _rxStatusFilter == statusOption;
+                final displayLabel = statusOption == 'All' ? _t('all') : (statusOption == 'Active' ? _tm('active') : _tm('completed'));
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    label: Text(
+                      displayLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        color: isSelected ? Colors.white : const Color(0xFF475569),
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF0284C7),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected ? const Color(0xFF0284C7) : const Color(0xFFCBD5E1),
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _rxStatusFilter = statusOption;
+                        });
+                      }
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Individual Prescription Cards List
+            filteredList.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.all(30.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _tm('no_matching_prescriptions'),
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF64748B),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: filteredList.map((rx) {
+                      final rxMap = Map<String, dynamic>.from(rx as Map);
+                      return _buildPrescriptionCard(context: context, rxData: rxMap);
+                    }).toList(),
+                  ).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildReceiptRow({
+  Widget _buildPrescriptionCard({
     required BuildContext context,
-    required String title,
-    required String subtitle,
-    required String amount,
-    required String status,
-    required Color statusColor,
+    required Map<String, dynamic> rxData,
   }) {
+    final String doctorName = rxData['doctorName'] ?? 'Doctor Prescription';
+    final String qualification = rxData['qualification'] ?? '';
+    final String hospitalName = rxData['hospitalName'] ?? '';
+    final String date = rxData['date'] ?? '';
+    final String diagnosis = rxData['diagnosis'] ?? 'General Consultation';
+    final String status = rxData['status'] ?? 'Active';
+    final List rxList = (rxData['rxList'] as List<dynamic>?) ?? [];
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
+          // Rx Header Letterhead Accent
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+            ),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1E293B),
+                  _tm('rx'),
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF0284C7),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _tm(doctorName),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      if (qualification.isNotEmpty)
+                        Text(
+                          _tm(qualification),
+                          style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '🏥 ${_tm(hospitalName)}  •  📅 $date',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0F766E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: status == 'Active' ? const Color(0xFFE0F2FE) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: status == 'Active' ? const Color(0xFFBAE6FD) : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Text(
+                    _tm(status),
+                    style: GoogleFonts.inter(
+                      color: status == 'Active' ? const Color(0xFF0369A1) : const Color(0xFF64748B),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                amount,
-                style: GoogleFonts.inter(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  status,
-                  style: GoogleFonts.inter(
-                    color: statusColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+
+          // Card Content Body
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Diagnosis Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F9FF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBAE6FD)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _tm('clinical_diagnosis'),
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0369A1),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _tm(diagnosis),
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Viewing Receipt for ' + title + '...'),
-                  duration: const Duration(seconds: 1),
+                const SizedBox(height: 14),
+
+                // Medicines Summary
+                Text(
+                  _tm('prescribed_medicines') + ' (${rxList.length})',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF64748B),
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              );
-            },
-            icon: const Icon(Icons.receipt_long_outlined, size: 18, color: Color(0xFFF97316)),
-            style: IconButton.styleFrom(
-              padding: const EdgeInsets.all(8),
-              backgroundColor: const Color(0xFFFFF7ED),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                const SizedBox(height: 8),
+                ...rxList.map((item) {
+                  final itemMap = Map<String, dynamic>.from(item as Map);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _tm(itemMap['medicineName'] ?? ''),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                              ),
+                              if (itemMap['instructions'] != null)
+                                Text(
+                                  _tm(itemMap['instructions']),
+                                  style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF64748B)),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _tm(itemMap['dosage'] ?? ''),
+                              style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0284C7),
+                                ),
+                            ),
+                            Text(
+                              _tm(itemMap['frequency'] ?? ''),
+                              style: GoogleFonts.inter(fontSize: 9.5, color: const Color(0xFF64748B)),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  );
+                }).toList(),
+
+                const SizedBox(height: 14),
+
+                // Button to view full Rx Sheet
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showPrescriptionModal(context, rxData),
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: Text(
+                      _tm('view_prescription_sheet'),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0284C7),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPrescriptionModal(BuildContext context, Map<String, dynamic> rx) {
+    final rxList = (rx['rxList'] as List<dynamic>?) ?? [];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(_tm('rx'), style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w900, color: const Color(0xFF0284C7))),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_tm(rx['doctorName'] ?? ''), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+                          Text(_tm(rx['qualification'] ?? ''), style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B))),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      if (rx['pdfUrl'] != null && rx['pdfUrl'].toString().isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.download_rounded, color: Color(0xFF0284C7)),
+                          tooltip: 'Download PDF',
+                          onPressed: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Downloading prescription PDF...')),
+                            );
+                            try {
+                              await downloadPdfFromUrl(
+                                rx['pdfUrl'],
+                                'prescription_${rx['prescriptionId'] ?? 'doc'}.pdf',
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error downloading PDF: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          },
+                        ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(_tm(rx['hospitalName'] ?? ''), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0F766E))),
+              Text(_t('date') + ': ${rx['date'] ?? ''}', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B))),
+              const Divider(height: 24, color: Color(0xFFE2E8F0)),
+              Text(_tm('clinical_diagnosis') + ':', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF0369A1), letterSpacing: 0.5)),
+              const SizedBox(height: 4),
+              Text(_tm(rx['diagnosis'] ?? 'N/A'), style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+              const SizedBox(height: 16),
+              Text(_tm('prescribed_medicines') + ':', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+              const SizedBox(height: 8),
+              ...rxList.map((item) {
+                final itemMap = Map<String, dynamic>.from(item as Map);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_tm(itemMap['medicineName'] ?? ''), style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+                            if (itemMap['instructions'] != null)
+                              Text(_tm(itemMap['instructions']), style: GoogleFonts.inter(fontSize: 10.5, color: const Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(_tm(itemMap['dosage'] ?? ''), style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF0284C7))),
+                          Text(_tm(itemMap['frequency'] ?? ''), style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF64748B))),
+                        ],
+                      )
+                    ],
+                  ),
+                );
+              }).toList(),
+              if (rx['doctorNotes'] != null) ...[
+                const SizedBox(height: 12),
+                Text(_tm('doctor_notes_caps') + ':', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFFB45309), letterSpacing: 0.5)),
+                const SizedBox(height: 4),
+                Text(_tm(rx['doctorNotes']), style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF334155))),
+              ],
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1370,7 +1766,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
           const Icon(Icons.circle, color: Color(0xFFE11D48), size: 6),
           const SizedBox(width: 6),
           Text(
-            name,
+            _tm(name),
             style: GoogleFonts.inter(
               color: const Color(0xFF9F1239),
               fontWeight: FontWeight.bold,
@@ -1606,7 +2002,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
             onPressed: () {},
             icon: const Icon(Icons.phone_enabled_rounded, size: 12, color: Color(0xFF16A34A)),
             label: Text(
-              'CALL',
+              _t('call').toUpperCase(),
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,

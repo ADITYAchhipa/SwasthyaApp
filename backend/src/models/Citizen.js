@@ -56,7 +56,7 @@ const CitizenSchema = new mongoose.Schema(
     // Organ Donation
     organPledge: OrganPledgeSchema,
 
-     // Insurance
+    // Insurance
     insuranceCompany: { type: String, default: '' },
     insurancePolicyNumber: { type: String, default: '' },
 
@@ -82,6 +82,30 @@ const CitizenSchema = new mongoose.Schema(
         date: { type: String },
         amount: { type: String },
         status_key: { type: String },
+      }
+    ],
+
+    // Prescriptions (JSON Format)
+    prescriptions: [
+      {
+        prescriptionId: { type: String },
+        doctorName: { type: String },
+        qualification: { type: String },
+        hospitalName: { type: String },
+        date: { type: String },
+        diagnosis: { type: String },
+        rxList: [
+          {
+            medicineName: { type: String },
+            dosage: { type: String },
+            frequency: { type: String },
+            duration: { type: String },
+            instructions: { type: String },
+          }
+        ],
+        doctorNotes: { type: String },
+        pdfUrl: { type: String },
+        status: { type: String, default: 'Active' },
       }
     ],
 
