@@ -45,6 +45,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
     _seedProfiles();
     _seedHealthReports();
     _seedPrescriptions();
+    _syncFromCurrentProfile();
   }
 
   // Getters
@@ -108,6 +109,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
 
   void setCurrentCitizen(String id) {
     _currentCitizenProfileId = id;
+    _syncFromCurrentProfile();
     notifyListeners();
   }
 
@@ -119,6 +121,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
     } else {
       _profiles.add(profile);
     }
+    _syncFromCurrentProfile();
     notifyListeners();
   }
 
@@ -137,6 +140,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
     final idx = _profiles.indexWhere((p) => p.id == updatedProfile.id);
     if (idx != -1) {
       _profiles[idx] = updatedProfile;
+      _syncFromCurrentProfile();
       notifyListeners();
     }
     // Persist to backend asynchronously
@@ -899,200 +903,288 @@ class SwasthyaTapProvider extends ChangeNotifier {
   void _seedPrescriptions() {
     _prescriptions.addAll([
       Prescription(
-        id: 'RX20JUL26A1B2',
-        doctorName: 'Dr. Rahul Sharma',
-        doctorPhoto: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=150',
-        qualification: 'MBBS, MD (Medicine)',
-        hospitalName: 'CityCare Hospital',
-        prescriptionDate: '20 Jul 2026',
-        validUntil: '27 Jul 2026',
-        diagnosis: 'Viral Fever',
+        id: 'RX-2026-891',
+        doctorName: 'Dr. Amit Shah',
+        doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
+        qualification: 'MD (Cardiology), FACC',
+        hospitalName: 'Apollo Speciality Hospital',
+        prescriptionDate: '20 Jun 2026',
+        validUntil: '20 Jul 2026',
+        diagnosis: 'Mild Hypertension & Preventive Checkup',
         medicines: [
           PrescriptionMedicine(
             id: 'med1',
-            name: 'Paracetamol 650mg',
-            strength: '650 mg',
+            name: 'Telmisartan 40mg',
+            strength: '1 Tablet',
             morning: true,
             afternoon: false,
+            night: false,
+            beforeFood: false,
+            afterFood: true,
+            duration: '30 Days',
+            quantity: '30 Tablets',
+            purpose: 'Control blood pressure',
+            sideEffects: 'Dizziness, headache',
+            storage: 'Store at room temperature',
+            alternatives: 'Telma 40',
+            isTakenToday: false,
+          ),
+          PrescriptionMedicine(
+            id: 'med2',
+            name: 'Amlodipine 5mg',
+            strength: '1 Tablet',
+            morning: false,
+            afternoon: false,
+            night: true,
+            beforeFood: false,
+            afterFood: true,
+            duration: '30 Days',
+            quantity: '30 Tablets',
+            purpose: 'Control blood pressure',
+            sideEffects: 'Ankle swelling',
+            storage: 'Store in a cool dry place',
+            alternatives: 'Amlopin 5',
+            isTakenToday: false,
+          ),
+          PrescriptionMedicine(
+            id: 'med3',
+            name: 'Multivitamin Complex',
+            strength: '1 Capsule',
+            morning: true,
+            afternoon: false,
+            night: false,
+            beforeFood: false,
+            afterFood: true,
+            duration: '15 Days',
+            quantity: '15 Capsules',
+            purpose: 'Nutritional supplement',
+            sideEffects: 'None',
+            storage: 'Store below 25°C',
+            alternatives: 'Becosules',
+            isTakenToday: false,
+          ),
+        ],
+        testsRecommended: ['Lipid Profile', 'ECG'],
+        doctorNotes: 'Maintain low sodium diet, 30 mins morning walk recommended. Follow up after 1 month with BP log.',
+        status: 'Active',
+      ),
+      Prescription(
+        id: 'RX-2026-442',
+        doctorName: 'Dr. Patel',
+        doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=150',
+        qualification: 'MBBS, MD (General Medicine)',
+        hospitalName: 'City Care Clinic',
+        prescriptionDate: '10 May 2026',
+        validUntil: '15 May 2026',
+        diagnosis: 'Acute Upper Respiratory Tract Infection',
+        medicines: [
+          PrescriptionMedicine(
+            id: 'med4',
+            name: 'Amoxicillin 500mg',
+            strength: '1 Capsule',
+            morning: true,
+            afternoon: true,
+            night: true,
+            beforeFood: false,
+            afterFood: true,
+            duration: '5 Days',
+            quantity: '15 Capsules',
+            purpose: 'Antibiotic for throat infection',
+            sideEffects: 'Nausea, diarrhea',
+            storage: 'Keep away from moisture',
+            alternatives: 'Mox 500',
+            isTakenToday: false,
+          ),
+          PrescriptionMedicine(
+            id: 'med5',
+            name: 'Paracetamol 650mg',
+            strength: '1 Tablet',
+            morning: true,
+            afternoon: true,
             night: true,
             beforeFood: false,
             afterFood: true,
             duration: '5 Days',
             quantity: '10 Tablets',
-            purpose: 'Used for fever and pain relief',
-            sideEffects: 'Drowsiness, Nausea',
-            storage: 'Store below 25°C. Do not expose to sunlight.',
-            alternatives: 'Crocin 650mg, Calpol 650mg',
-            isTakenToday: true,
-          ),
-          PrescriptionMedicine(
-            id: 'med2',
-            name: 'Vitamin C 500mg',
-            strength: '500 mg',
-            morning: false,
-            afternoon: true,
-            night: false,
-            beforeFood: false,
-            afterFood: true,
-            duration: '7 Days',
-            quantity: '7 Tablets',
-            purpose: 'Immunity booster and antioxidant support',
-            sideEffects: 'None reported when taken in recommended doses',
-            storage: 'Store in a cool, dry place.',
-            alternatives: 'Limcee, Celin',
-            isTakenToday: false,
-          ),
-          PrescriptionMedicine(
-            id: 'med3',
-            name: 'Pantoprazole 40mg',
-            strength: '40 mg',
-            morning: true,
-            afternoon: false,
-            night: false,
-            beforeFood: true,
-            afterFood: false,
-            duration: '5 Days',
-            quantity: '5 Tablets',
-            purpose: 'Acidity, heartburn and acid reflux prevention',
-            sideEffects: 'Headache, Mild diarrhea',
-            storage: 'Store in a cool dry place below 30°C.',
-            alternatives: 'Pan-40, Pantocid',
-            isTakenToday: true,
-          ),
-        ],
-        testsRecommended: ['CBC (Complete Blood Count)', 'Liver Function Test (LFT)'],
-        doctorNotes: 'Drink plenty of water. Take complete course. Avoid oily food.',
-        status: 'Active',
-      ),
-      Prescription(
-        id: 'RX05JUL26C3D4',
-        doctorName: 'Dr. Priya Mehta',
-        doctorPhoto: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?q=80&w=150',
-        qualification: 'MD (Internal Medicine)',
-        hospitalName: 'CityCare Hospital',
-        prescriptionDate: '05 Jul 2026',
-        validUntil: '12 Jul 2026',
-        diagnosis: 'Acidity',
-        medicines: [
-          PrescriptionMedicine(
-            id: 'med4',
-            name: 'Pantoprazole 40mg',
-            strength: '40 mg',
-            morning: true,
-            afternoon: false,
-            night: false,
-            beforeFood: true,
-            afterFood: false,
-            duration: '7 Days',
-            quantity: '7 Tablets',
-            purpose: 'Acidity prevention',
-            sideEffects: 'Headache',
+            purpose: 'Fever and pain relief',
+            sideEffects: 'None when taken in limit',
             storage: 'Store below 30°C',
-            alternatives: 'Pan-40',
+            alternatives: 'Dolo 650',
             isTakenToday: false,
           ),
         ],
         testsRecommended: [],
-        doctorNotes: 'Avoid spicy food and carbonated drinks. Walk 15 mins after dinner.',
-        status: 'Active',
-      ),
-      Prescription(
-        id: 'RX28JUN26E5F6',
-        doctorName: 'Dr. Amit Verma',
-        doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
-        qualification: 'MBBS, MD (Pediatrics)',
-        hospitalName: 'Metro Clinics',
-        prescriptionDate: '28 Jun 2026',
-        validUntil: '03 Jul 2026',
-        diagnosis: 'Cold & Cough',
-        medicines: [
-          PrescriptionMedicine(
-            id: 'med5',
-            name: 'Cetirizine 10mg',
-            strength: '10 mg',
-            morning: false,
-            afternoon: false,
-            night: true,
-            beforeFood: false,
-            afterFood: true,
-            duration: '5 Days',
-            quantity: '5 Tablets',
-            purpose: 'Antiallergic for cold symptoms',
-            sideEffects: 'Drowsiness',
-            storage: 'Store at room temperature',
-            alternatives: 'Zyrtec',
-            isTakenToday: false,
-          ),
-        ],
-        testsRecommended: [],
-        doctorNotes: 'Keep warm, take steam inhalation twice a day.',
-        status: 'Completed',
-      ),
-      Prescription(
-        id: 'RX15JUN26G7H8',
-        doctorName: 'Dr. Neha Kapoor',
-        doctorPhoto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=150',
-        qualification: 'DLO, ENT Specialist',
-        hospitalName: 'Lotus ENT Hospital',
-        prescriptionDate: '15 Jun 2026',
-        validUntil: '18 Jun 2026',
-        diagnosis: 'Allergy',
-        medicines: [
-          PrescriptionMedicine(
-            id: 'med6',
-            name: 'Allegra 120mg',
-            strength: '120 mg',
-            morning: true,
-            afternoon: false,
-            night: false,
-            beforeFood: false,
-            afterFood: true,
-            duration: '3 Days',
-            quantity: '3 Tablets',
-            purpose: 'Relief from seasonal allergies',
-            sideEffects: 'Dry mouth',
-            storage: 'Store below 25°C',
-            alternatives: 'Telfast',
-            isTakenToday: false,
-          ),
-        ],
-        testsRecommended: [],
-        doctorNotes: 'Avoid exposure to dust and pollen. Wear a mask outdoors.',
-        status: 'Completed',
-      ),
-      Prescription(
-        id: 'RX30MAY26I9J0',
-        doctorName: 'Dr. Sandeep Jain',
-        doctorPhoto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
-        qualification: 'MS (Orthopedics)',
-        hospitalName: 'Bone & Joint Clinic',
-        prescriptionDate: '30 May 2026',
-        validUntil: '09 Jun 2026',
-        diagnosis: 'Back Pain',
-        medicines: [
-          PrescriptionMedicine(
-            id: 'med7',
-            name: 'Aceclofenac 100mg',
-            strength: '100 mg',
-            morning: true,
-            afternoon: false,
-            night: true,
-            beforeFood: false,
-            afterFood: true,
-            duration: '10 Days',
-            quantity: '20 Tablets',
-            purpose: 'Pain relief and anti-inflammatory',
-            sideEffects: 'Gastric irritation',
-            storage: 'Keep away from moisture',
-            alternatives: 'Zerodol-100',
-            isTakenToday: false,
-          ),
-        ],
-        testsRecommended: [],
-        doctorNotes: 'Do not lift heavy weights. Apply warm compress.',
+        doctorNotes: 'Drink warm water and steam inhalation twice daily.',
         status: 'Completed',
       ),
     ]);
+  }
+
+  static Prescription _parsePrescriptionFromJson(Map<String, dynamic> json) {
+    final rxListJson = (json['rxList'] as List<dynamic>?) ?? [];
+    final medicines = rxListJson.map((m) {
+      final mMap = m as Map<String, dynamic>;
+      
+      final freq = (mMap['frequency'] as String? ?? '').toLowerCase();
+      final instructions = (mMap['instructions'] as String? ?? '').toLowerCase();
+      
+      final morning = mMap['morning'] is bool
+          ? mMap['morning'] as bool
+          : (mMap['morning'] == 'true' || freq.contains('morning') || freq.contains('1-') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily'));
+      final afternoon = mMap['afternoon'] is bool
+          ? mMap['afternoon'] as bool
+          : (mMap['afternoon'] == 'true' || freq.contains('afternoon') || freq.contains('-1-') || freq.contains('1-1-1') || freq.contains('daily'));
+      final night = mMap['night'] is bool
+          ? mMap['night'] as bool
+          : (mMap['night'] == 'true' || freq.contains('night') || freq.contains('-1') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily'));
+      
+      final beforeFood = mMap['beforeFood'] is bool
+          ? mMap['beforeFood'] as bool
+          : (mMap['beforeFood'] == 'true' || instructions.contains('before') || instructions.contains('empty'));
+      final afterFood = mMap['afterFood'] is bool
+          ? mMap['afterFood'] as bool
+          : (mMap['afterFood'] == 'true' || !beforeFood);
+
+      return PrescriptionMedicine(
+        id: mMap['_id'] as String? ?? mMap['id'] as String? ?? UniqueKey().toString(),
+        name: mMap['medicineName'] as String? ?? 'Medicine',
+        strength: mMap['dosage'] as String? ?? '1 Tablet',
+        morning: morning,
+        afternoon: afternoon,
+        night: night,
+        beforeFood: beforeFood,
+        afterFood: afterFood,
+        duration: mMap['duration'] as String? ?? '5 days',
+        quantity: mMap['quantity'] as String? ?? '10 Units',
+        purpose: mMap['purpose'] as String? ?? 'Treatment',
+        sideEffects: mMap['sideEffects'] as String? ?? 'None reported',
+        storage: mMap['storage'] as String? ?? 'Store in a cool dry place',
+        alternatives: mMap['alternatives'] as String? ?? 'N/A',
+        isTakenToday: mMap['isTakenToday'] is bool ? mMap['isTakenToday'] as bool : (mMap['isTakenToday'] == 'true'),
+      );
+    }).toList();
+
+    final testsRecommendedJson = json['testsRecommended'] as List<dynamic>?;
+    final List<String> testsRec = testsRecommendedJson != null
+        ? testsRecommendedJson.map((e) => e.toString()).toList()
+        : [];
+
+    return Prescription(
+      id: json['prescriptionId'] as String? ?? json['_id'] as String? ?? UniqueKey().toString(),
+      doctorName: json['doctorName'] as String? ?? 'Dr. Unknown',
+      doctorPhoto: json['doctorPhoto'] as String? ?? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150',
+      qualification: json['qualification'] as String? ?? 'MBBS',
+      hospitalName: json['hospitalName'] as String? ?? 'General Hospital',
+      prescriptionDate: json['date'] as String? ?? 'Today',
+      validUntil: json['validUntil'] as String? ?? '30 Days',
+      diagnosis: json['diagnosis'] as String? ?? 'General Consultation',
+      medicines: medicines,
+      testsRecommended: testsRec,
+      doctorNotes: json['doctorNotes'] as String? ?? 'Take medicines as directed.',
+      status: json['status'] as String? ?? 'Active',
+      isFavorite: json['isFavorite'] is bool ? json['isFavorite'] as bool : (json['isFavorite'] == 'true'),
+    );
+  }
+
+  static HealthReport _parseHealthReportFromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String? ?? 'Report';
+    final isPdf = name.toLowerCase().endsWith('.pdf');
+    final fileType = json['fileType'] as String? ?? (isPdf ? 'PDF' : 'JPG');
+    
+    final title = json['title_key'] as String? ?? '';
+    String category = json['category'] as String? ?? 'Others';
+    if (category == 'Others' && title.isNotEmpty) {
+      if (title.toLowerCase().contains('blood') || title.toLowerCase().contains('cbc') || title.toLowerCase().contains('lft')) {
+        category = 'Blood Tests';
+      } else if (title.toLowerCase().contains('mri')) {
+        category = 'MRI';
+      } else if (title.toLowerCase().contains('ct scan')) {
+        category = 'CT Scan';
+      } else if (title.toLowerCase().contains('x-ray') || title.toLowerCase().contains('radiology')) {
+        category = 'Radiology';
+      } else if (title.toLowerCase().contains('ecg') || title.toLowerCase().contains('ekg')) {
+        category = 'ECG';
+      } else if (title.toLowerCase().contains('prescription')) {
+        category = 'Prescription';
+      } else if (title.toLowerCase().contains('discharge')) {
+        category = 'Discharge Summary';
+      }
+    }
+
+    final tagsJson = json['tags'] as List<dynamic>?;
+    final List<String> tags = tagsJson != null
+        ? tagsJson.map((e) => e.toString()).toList()
+        : [category, 'Lab Upload'];
+
+    return HealthReport(
+      id: json['_id'] as String? ?? json['id'] as String? ?? UniqueKey().toString(),
+      reportName: title.isNotEmpty ? title : 'Medical Report',
+      hospitalName: json['issuer_key'] as String? ?? 'General Hospital',
+      department: json['department'] as String? ?? (category == 'Blood Tests' ? 'Biochemistry' : (category == 'MRI' || category == 'CT Scan' || category == 'Radiology' ? 'Radiology' : 'General Medicine')),
+      doctorName: json['doctor_key'] as String? ?? 'Dr. Unknown',
+      reportDate: json['date'] as String? ?? 'Today',
+      bloodGroup: json['bloodGroup'] as String?,
+      tags: tags,
+      category: category,
+      uploadedBy: json['uploadedBy'] as String? ?? json['issuer_key'] as String? ?? 'Lab',
+      fileType: fileType,
+      notes: json['notes'] as String? ?? json['status_key'] as String? ?? 'Verified Digital Record',
+      isAbnormal: json['isAbnormal'] is bool ? json['isAbnormal'] as bool : (json['isAbnormal'] == 'true'),
+      isFavorite: json['isFavorite'] is bool ? json['isFavorite'] as bool : (json['isFavorite'] == 'true'),
+      fileSize: json['fileSize'] as String? ?? '1.2 MB',
+      referenceId: json['referenceId'] as String? ?? json['_id'] as String? ?? 'REF-UNKNOWN',
+      version: json['version'] as String? ?? '1.0.0',
+    );
+  }
+
+  void _syncFromCurrentProfile() {
+    try {
+      final citizen = currentCitizen;
+      
+      // Sync prescriptions
+      if (_currentCitizenProfileId != 'x7k9m2' || citizen.prescriptions.isNotEmpty) {
+        _prescriptions.clear();
+        for (var p in citizen.prescriptions) {
+          if (p is Map<String, dynamic>) {
+            _prescriptions.add(_parsePrescriptionFromJson(p));
+          } else if (p is Prescription) {
+            _prescriptions.add(p);
+          }
+        }
+      }
+      
+      // Sync health reports
+      if (_currentCitizenProfileId != 'x7k9m2' || citizen.medicalReports.isNotEmpty) {
+        _healthReports.clear();
+        for (var r in citizen.medicalReports) {
+          if (r is Map<String, dynamic>) {
+            _healthReports.add(_parseHealthReportFromJson(r));
+          } else if (r is HealthReport) {
+            _healthReports.add(r);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing profiles data: $e');
+    }
+  }
+
+  Future<void> refreshCurrentCitizen() async {
+    try {
+      final updatedProfile = await ApiService.getCitizen(_currentCitizenProfileId);
+      if (updatedProfile != null) {
+        final idx = _profiles.indexWhere((p) => p.id == updatedProfile.id);
+        if (idx != -1) {
+          _profiles[idx] = updatedProfile;
+        } else {
+          _profiles.add(updatedProfile);
+        }
+        _syncFromCurrentProfile();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing citizen profile: $e');
+    }
   }
 
   @override

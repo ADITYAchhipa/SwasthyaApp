@@ -27,6 +27,9 @@ import 'previous_reports_screen.dart';
 import 'medical_reports/my_reports_screen.dart';
 import 'prescriptions/prescriptions_dashboard_screen.dart';
 import 'nfc_card_reader_screen.dart';
+import '../../utils/card_pdf_generator.dart';
+import '../../utils/pdf_downloader.dart';
+import '../../utils/citizen_data_pdf_generator.dart';
 
 class CitizenDashboard extends StatefulWidget {
   const CitizenDashboard({Key? key}) : super(key: key);
@@ -259,6 +262,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
+
+    // Fetch latest profile details (including prescriptions and reports) from backend
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SwasthyaTapProvider>(context, listen: false).refreshCurrentCitizen();
+    });
   }
 
   @override
@@ -419,7 +427,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   Text(
-                    '${citizen.fullName.split(" ")[0]} 👋',
+                    ' ${citizen.fullName.split(" ")[0]}',
                     style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -477,77 +485,87 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   }
 
   Widget _buildEmergencyBanner(BuildContext context, SwasthyaTapProvider provider) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFEF4444).withOpacity(0.25),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const NfcCardReaderScreen(),
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -10,
-            bottom: -15,
-            child: Opacity(
-              opacity: 0.12,
-              child: const Icon(Icons.contactless_outlined, size: 100, color: Colors.white),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEF4444).withOpacity(0.25),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t('emergency_title', provider.selectedLanguage),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _t('emergency_sub', provider.selectedLanguage),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
-                ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -10,
+              bottom: -15,
+              child: Opacity(
+                opacity: 0.12,
+                child: const Icon(Icons.contactless_outlined, size: 100, color: Colors.white),
               ),
-              const SizedBox(width: 8),
-              // Forward Arrow Circular button
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t('emergency_title', provider.selectedLanguage),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _t('emergency_sub', provider.selectedLanguage),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: AppTheme.accentRed,
-                  size: 20,
+                const SizedBox(width: 8),
+                // Forward Arrow Circular button
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppTheme.accentRed,
+                    size: 20,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2904,7 +2922,78 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     );
   }
 
+  Future<void> _downloadHealthReportPdf(BuildContext context, MedicalProfile citizen) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D9488)),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Generating PDF Document...',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+      final pdfBytes = await generateCitizenDataPdfBytes(
+        citizen: citizen,
+        prescriptions: provider.prescriptions,
+        healthReports: provider.healthReports,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      final filename = 'SwasthyaTap_Health_Report_${citizen.fullName.replaceAll(' ', '_')}.pdf';
+      downloadPdfFile(pdfBytes, filename);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Health Report PDF Downloaded successfully!'),
+          backgroundColor: Color(0xFF0D9488),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildBottomActions(BuildContext context) {
+    final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+    final citizen = provider.currentCitizen;
+
     return Column(
       children: [
         // Download My Data
@@ -2913,11 +3002,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Downloading health report (PDF)...')),
-              );
-            },
+            onTap: () => _downloadHealthReportPdf(context, citizen),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -2959,80 +3044,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Delete Account
-        Material(
-          color: const Color(0xFFFEE2E2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0xFFFCA5A5), width: 1),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Delete account flow initiated...')),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF991B1B),
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Permanently delete your data & account',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFFEF4444),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF991B1B), size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Info text
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.verified_user_rounded, color: Color(0xFF64748B), size: 12),
-            const SizedBox(width: 4),
-            Text(
-              'You will be asked to confirm with your PIN before deleting your account.',
-              style: GoogleFonts.inter(
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ],
         ),
       ],
     );

@@ -14,7 +14,7 @@ class ApiService {
   // For iOS Simulator → localhost
   static String get baseUrl {
     // Set this to true to connect to your production deployment, false for localhost
-    const bool useProduction = true;
+    const bool useProduction = false;
 
     if (useProduction) {
       return 'http://api.swasthyatap.in/api';
@@ -371,6 +371,10 @@ class ApiService {
     required String doctor,
     required List<int> fileBytes,
     required String filename,
+    String? department,
+    bool? isAbnormal,
+    String? category,
+    List<String>? tags,
   }) async {
     try {
       final request = http.MultipartRequest(
@@ -390,6 +394,19 @@ class ApiService {
       request.fields['date'] = date;
       request.fields['doctor_key'] = doctor;
       request.fields['status_key'] = 'verified_report';
+      
+      if (department != null) {
+        request.fields['department'] = department;
+      }
+      if (isAbnormal != null) {
+        request.fields['isAbnormal'] = isAbnormal.toString();
+      }
+      if (category != null) {
+        request.fields['category'] = category;
+      }
+      if (tags != null) {
+        request.fields['tags'] = jsonEncode(tags);
+      }
 
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -815,6 +832,130 @@ class ApiService {
             'date': '12 May 2026',
             'amount': '₹1,500',
             'status_key': 'paid',
+          }
+        ],
+        'prescriptions': [
+          {
+            'prescriptionId': 'RX-2026-891',
+            'doctorName': 'Dr. Amit Shah',
+            'qualification': 'MD (Cardiology), FACC',
+            'hospitalName': 'Apollo Speciality Hospital',
+            'date': '20 Jun 2026',
+            'diagnosis': 'Mild Hypertension & Preventive Checkup',
+            'doctorNotes': 'Maintain low sodium diet, 30 mins morning walk recommended. Follow up after 1 month with BP log.',
+            'status': 'Active',
+            'doctorPhoto': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=150',
+            'validUntil': '20 Jul 2026',
+            'testsRecommended': ['Lipid Profile', 'ECG'],
+            'isFavorite': true,
+            'rxList': [
+              {
+                'medicineName': 'Telmisartan 40mg',
+                'dosage': '1 Tablet',
+                'frequency': 'Once Daily (Morning)',
+                'duration': '30 Days',
+                'instructions': 'Take after breakfast with water',
+                'morning': true,
+                'afternoon': false,
+                'night': false,
+                'beforeFood': false,
+                'afterFood': true,
+                'quantity': '30 Tablets',
+                'purpose': 'Control blood pressure',
+                'sideEffects': 'Dizziness, headache',
+                'storage': 'Store at room temperature',
+                'alternatives': 'Telma 40',
+                'isTakenToday': false
+              },
+              {
+                'medicineName': 'Amlodipine 5mg',
+                'dosage': '1 Tablet',
+                'frequency': 'Once Daily (Night)',
+                'duration': '30 Days',
+                'instructions': 'Take before sleep',
+                'morning': false,
+                'afternoon': false,
+                'night': true,
+                'beforeFood': false,
+                'afterFood': true,
+                'quantity': '30 Tablets',
+                'purpose': 'Control blood pressure',
+                'sideEffects': 'Ankle swelling',
+                'storage': 'Store in a cool dry place',
+                'alternatives': 'Amlopin 5',
+                'isTakenToday': false
+              },
+              {
+                'medicineName': 'Multivitamin Complex',
+                'dosage': '1 Capsule',
+                'frequency': 'Once Daily',
+                'duration': '15 Days',
+                'instructions': 'Take after meal',
+                'morning': true,
+                'afternoon': false,
+                'night': false,
+                'beforeFood': false,
+                'afterFood': true,
+                'quantity': '15 Capsules',
+                'purpose': 'Nutritional supplement',
+                'sideEffects': 'None',
+                'storage': 'Store below 25°C',
+                'alternatives': 'Becosules',
+                'isTakenToday': false
+              }
+            ]
+          },
+          {
+            'prescriptionId': 'RX-2026-442',
+            'doctorName': 'Dr. Patel',
+            'qualification': 'MBBS, MD (General Medicine)',
+            'hospitalName': 'City Care Clinic',
+            'date': '10 May 2026',
+            'diagnosis': 'Acute Upper Respiratory Tract Infection',
+            'doctorNotes': 'Drink warm water and steam inhalation twice daily.',
+            'status': 'Completed',
+            'doctorPhoto': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=150',
+            'validUntil': '15 May 2026',
+            'testsRecommended': [],
+            'isFavorite': false,
+            'rxList': [
+              {
+                'medicineName': 'Amoxicillin 500mg',
+                'dosage': '1 Capsule',
+                'frequency': 'Thrice Daily (8hrly)',
+                'duration': '5 Days',
+                'instructions': 'Complete full course',
+                'morning': true,
+                'afternoon': true,
+                'night': true,
+                'beforeFood': false,
+                'afterFood': true,
+                'quantity': '15 Capsules',
+                'purpose': 'Antibiotic for throat infection',
+                'sideEffects': 'Nausea, diarrhea',
+                'storage': 'Keep away from moisture',
+                'alternatives': 'Mox 500',
+                'isTakenToday': false
+              },
+              {
+                'medicineName': 'Paracetamol 650mg',
+                'dosage': '1 Tablet',
+                'frequency': 'As needed for fever',
+                'duration': '5 Days',
+                'instructions': 'Max 3 tablets per day',
+                'morning': true,
+                'afternoon': true,
+                'night': true,
+                'beforeFood': false,
+                'afterFood': true,
+                'quantity': '10 Tablets',
+                'purpose': 'Fever and pain relief',
+                'sideEffects': 'None when taken in limit',
+                'storage': 'Store below 30°C',
+                'alternatives': 'Dolo 650',
+                'isTakenToday': false
+              }
+            ]
           }
         ],
       };

@@ -134,6 +134,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   };
 
   String _t(String key) {
+    if (_localizations.containsKey(_selectedLanguage) &&
+        _localizations[_selectedLanguage]!.containsKey(key)) {
+      return _localizations[_selectedLanguage]![key]!;
+    }
     return TranslationService.t(context, key);
   }
 

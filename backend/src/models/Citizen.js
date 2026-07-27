@@ -71,6 +71,19 @@ const CitizenSchema = new mongoose.Schema(
         date: { type: String },
         status_key: { type: String },
         doctor_key: { type: String },
+        // High-fidelity fields matching HealthReport model:
+        department: { type: String, default: 'General Medicine' },
+        bloodGroup: { type: String, default: null },
+        tags: [{ type: String }],
+        category: { type: String, default: 'Others' },
+        uploadedBy: { type: String, default: '' },
+        fileType: { type: String, default: 'PDF' },
+        notes: { type: String, default: '' },
+        isAbnormal: { type: Boolean, default: false },
+        isFavorite: { type: Boolean, default: false },
+        fileSize: { type: String, default: '1.2 MB' },
+        referenceId: { type: String, default: '' },
+        version: { type: String, default: '1.0.0' },
       }
     ],
 
@@ -94,6 +107,14 @@ const CitizenSchema = new mongoose.Schema(
         hospitalName: { type: String },
         date: { type: String },
         diagnosis: { type: String },
+        doctorNotes: { type: String },
+        pdfUrl: { type: String },
+        status: { type: String, default: 'Active' },
+        // High-fidelity fields matching Prescription model:
+        doctorPhoto: { type: String, default: '' },
+        validUntil: { type: String, default: '' },
+        testsRecommended: [{ type: String }],
+        isFavorite: { type: Boolean, default: false },
         rxList: [
           {
             medicineName: { type: String },
@@ -101,11 +122,20 @@ const CitizenSchema = new mongoose.Schema(
             frequency: { type: String },
             duration: { type: String },
             instructions: { type: String },
+            // High-fidelity fields matching PrescriptionMedicine model:
+            morning: { type: Boolean, default: false },
+            afternoon: { type: Boolean, default: false },
+            night: { type: Boolean, default: false },
+            beforeFood: { type: Boolean, default: false },
+            afterFood: { type: Boolean, default: false },
+            quantity: { type: String, default: '' },
+            purpose: { type: String, default: '' },
+            sideEffects: { type: String, default: '' },
+            storage: { type: String, default: '' },
+            alternatives: { type: String, default: '' },
+            isTakenToday: { type: Boolean, default: false },
           }
         ],
-        doctorNotes: { type: String },
-        pdfUrl: { type: String },
-        status: { type: String, default: 'Active' },
       }
     ],
 

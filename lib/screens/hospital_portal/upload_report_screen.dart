@@ -29,6 +29,11 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
   String _dateStr = '24 Jun 2026';
   String _status = 'Verified';
   
+  String _department = 'Hematology';
+  String _category = 'Blood Tests';
+  bool _isAbnormal = false;
+  final _tagsController = TextEditingController(text: 'CBC, Blood Test, Routine');
+
   XFile? _selectedFile;
   Uint8List? _fileBytes;
   String _fileName = 'CBC_Report_24Jun2026.pdf';
@@ -40,6 +45,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
   void dispose() {
     _titleController.dispose();
     _issuerController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
@@ -76,6 +82,12 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
       _isUploading = true;
     });
 
+    final tagsList = _tagsController.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     final updatedProfile = await ApiService.uploadMedicalReport(
       widget.profile.id,
       title: _titleController.text.trim(),
@@ -84,6 +96,10 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
       doctor: _doctorName,
       fileBytes: _fileBytes ?? Uint8List(0),
       filename: _fileName,
+      department: _department,
+      isAbnormal: _isAbnormal,
+      category: _category,
+      tags: tagsList,
     );
 
     setState(() {
@@ -384,6 +400,94 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Department *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF334155))),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      value: _department,
+                      decoration: _inputDecoration(),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                      items: const [
+                        DropdownMenuItem(value: 'Hematology', child: Text('Hematology')),
+                        DropdownMenuItem(value: 'Biochemistry', child: Text('Biochemistry')),
+                        DropdownMenuItem(value: 'Endocrinology', child: Text('Endocrinology')),
+                        DropdownMenuItem(value: 'Radiology', child: Text('Radiology')),
+                        DropdownMenuItem(value: 'Cardiology', child: Text('Cardiology')),
+                        DropdownMenuItem(value: 'General Medicine', child: Text('Gen Medicine')),
+                      ],
+                      onChanged: (val) => setState(() => _department = val!),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Category *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF334155))),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      value: _category,
+                      decoration: _inputDecoration(),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                      items: const [
+                        DropdownMenuItem(value: 'Blood Tests', child: Text('Blood Tests')),
+                        DropdownMenuItem(value: 'Radiology', child: Text('Radiology')),
+                        DropdownMenuItem(value: 'MRI', child: Text('MRI')),
+                        DropdownMenuItem(value: 'CT Scan', child: Text('CT Scan')),
+                        DropdownMenuItem(value: 'ECG', child: Text('ECG')),
+                        DropdownMenuItem(value: 'Discharge Summary', child: Text('Discharge')),
+                        DropdownMenuItem(value: 'Others', child: Text('Others')),
+                      ],
+                      onChanged: (val) => setState(() => _category = val!),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          Text('Tags (comma separated) *', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF334155))),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _tagsController,
+            decoration: _inputDecoration(hint: 'e.g. CBC, Routine, Blood'),
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+          ),
+          const SizedBox(height: 14),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Abnormal Findings',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                  ),
+                  Text(
+                    'Flags this report in clinical alerts',
+                    style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+              Switch.adaptive(
+                value: _isAbnormal,
+                activeColor: const Color(0xFFF43F5E),
+                onChanged: (val) => setState(() => _isAbnormal = val),
               ),
             ],
           ),

@@ -334,7 +334,12 @@ router.post('/:id/prescriptions', authenticate, upload.single('file'), async (re
       diagnosis,
       rxList,
       doctorNotes,
-      status
+      status,
+      // Extra high-fidelity fields
+      doctorPhoto,
+      validUntil,
+      testsRecommended,
+      isFavorite,
     } = req.body;
 
     if (!doctorName || !hospitalName || !date || !diagnosis || !rxList) {
@@ -361,6 +366,19 @@ router.post('/:id/prescriptions', authenticate, upload.single('file'), async (re
       secureUrl = uploadResult.secure_url;
     }
 
+    let parsedTests = [];
+    if (testsRecommended) {
+      if (typeof testsRecommended === 'string') {
+        try {
+          parsedTests = JSON.parse(testsRecommended);
+        } catch (_) {
+          parsedTests = [testsRecommended];
+        }
+      } else if (Array.isArray(testsRecommended)) {
+        parsedTests = testsRecommended;
+      }
+    }
+
     const newPrescription = {
       prescriptionId: `PRES-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       doctorName,
@@ -368,16 +386,31 @@ router.post('/:id/prescriptions', authenticate, upload.single('file'), async (re
       hospitalName,
       date,
       diagnosis,
-      rxList: rxListParsed.map(item => ({
-        medicineName: item.medicineName || '',
-        dosage: item.dosage || '',
-        frequency: item.frequency || '',
-        duration: item.duration || '',
-        instructions: item.instructions || '',
-      })),
       doctorNotes: doctorNotes || '',
       pdfUrl: secureUrl,
       status: status || 'Active',
+      doctorPhoto: doctorPhoto || '',
+      validUntil: validUntil || '',
+      testsRecommended: parsedTests,
+      isFavorite: isFavorite === 'true' || isFavorite === true,
+      rxList: rxListParsed.map(item => ({
+        medicineName: item.medicineName || item.name || '',
+        dosage: item.dosage || item.strength || '',
+        frequency: item.frequency || '',
+        duration: item.duration || '',
+        instructions: item.instructions || '',
+        morning: item.morning === true || item.morning === 'true',
+        afternoon: item.afternoon === true || item.afternoon === 'true',
+        night: item.night === true || item.night === 'true',
+        beforeFood: item.beforeFood === true || item.beforeFood === 'true',
+        afterFood: item.afterFood === true || item.afterFood === 'true',
+        quantity: item.quantity || '',
+        purpose: item.purpose || '',
+        sideEffects: item.sideEffects || '',
+        storage: item.storage || '',
+        alternatives: item.alternatives || '',
+        isTakenToday: item.isTakenToday === true || item.isTakenToday === 'true',
+      })),
     };
 
     citizen.prescriptions.push(newPrescription);
@@ -409,7 +442,20 @@ router.post('/:id/medical-reports', authenticate, upload.single('file'), async (
       issuer_key,
       date,
       status_key,
-      doctor_key
+      doctor_key,
+      // High-fidelity fields
+      department,
+      bloodGroup,
+      tags,
+      category,
+      uploadedBy,
+      fileType,
+      notes,
+      isAbnormal,
+      isFavorite,
+      fileSize,
+      referenceId,
+      version,
     } = req.body;
 
     if (!title_key || !issuer_key || !date) {
@@ -427,6 +473,21 @@ router.post('/:id/medical-reports', authenticate, upload.single('file'), async (
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
+    let parsedTags = [];
+    if (tags) {
+      if (typeof tags === 'string') {
+        try {
+          parsedTags = JSON.parse(tags);
+        } catch (_) {
+          parsedTags = [tags];
+        }
+      } else if (Array.isArray(tags)) {
+        parsedTags = tags;
+      }
+    } else {
+      parsedTags = [category || 'Others', 'Lab Upload'];
+    }
+
     const newReport = {
       name: originalName,
       url: secureUrl,
@@ -436,6 +497,18 @@ router.post('/:id/medical-reports', authenticate, upload.single('file'), async (
       date,
       status_key: status_key || 'verified_report',
       doctor_key: doctor_key || '',
+      department: department || 'General Medicine',
+      bloodGroup: bloodGroup || null,
+      tags: parsedTags,
+      category: category || 'Others',
+      uploadedBy: uploadedBy || issuer_key || '',
+      fileType: fileType || (originalName.toLowerCase().endsWith('.pdf') ? 'PDF' : 'JPG'),
+      notes: notes || status_key || '',
+      isAbnormal: isAbnormal === 'true' || isAbnormal === true,
+      isFavorite: isFavorite === 'true' || isFavorite === true,
+      fileSize: fileSize || '1.2 MB',
+      referenceId: referenceId || `REF-${Date.now()}`,
+      version: version || '1.0.0',
     };
 
     citizen.medicalReports.push(newReport);

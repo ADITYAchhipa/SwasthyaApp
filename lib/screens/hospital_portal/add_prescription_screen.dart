@@ -38,13 +38,34 @@ class _MedicineControllers {
     this.instructions = 'After breakfast',
   });
 
-  Map<String, String> toJson() {
+  Map<String, dynamic> toJson() {
+    final freq = frequency.toLowerCase();
+    final inst = instructions.toLowerCase();
+
+    final morning = freq.contains('morning') || freq.contains('1-') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily');
+    final afternoon = freq.contains('afternoon') || freq.contains('-1-') || freq.contains('1-1-1') || freq.contains('daily');
+    final night = freq.contains('night') || freq.contains('-1') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily');
+
+    final beforeFood = inst.contains('before') || inst.contains('empty');
+    final afterFood = !beforeFood;
+
     return {
       'medicineName': name,
       'dosage': dosage,
       'frequency': frequency,
       'duration': duration,
       'instructions': instructions,
+      'morning': morning,
+      'afternoon': afternoon,
+      'night': night,
+      'beforeFood': beforeFood,
+      'afterFood': afterFood,
+      'quantity': dosage.toLowerCase().contains('tablet') ? '30 Tablets' : '10 Units',
+      'purpose': 'Treatment',
+      'sideEffects': 'None reported',
+      'storage': 'Store in a cool dry place',
+      'alternatives': 'N/A',
+      'isTakenToday': false,
     };
   }
 }
