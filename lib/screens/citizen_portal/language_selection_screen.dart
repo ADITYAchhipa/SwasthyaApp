@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/swasthya_tap_provider.dart';
+import '../../utils/translation_service.dart';
 import '../../theme/app_theme.dart';
 import 'citizen_dashboard.dart';
 
@@ -331,13 +332,13 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Text(
-                      'Confirm Language',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      TranslationService.tLang(_selectedLang, 'confirm_language'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_rounded, size: 18),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, size: 18),
                   ],
                 ),
               ),

@@ -457,7 +457,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    currentLang == 'Hindi' ? 'भाषा की पुष्टि करें' : 'Confirm Language',
+                    TranslationService.tLang(currentLang, 'confirm_language'),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   const SizedBox(width: 8),

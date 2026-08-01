@@ -14,10 +14,10 @@ class ApiService {
   // For iOS Simulator → localhost
   static String get baseUrl {
     // Set this to true to connect to your production deployment, false for localhost
-    const bool useProduction = false;
+    const bool useProduction = true;
 
     if (useProduction) {
-      return 'http://api.swasthyatap.in/api';
+      return 'https://www.api.swasthyatap.in/api';
     }
 
     if (kIsWeb) return 'http://localhost:3011/api';

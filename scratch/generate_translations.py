@@ -825,6 +825,20 @@ keys = [
     }),
     ('verified_report', {
         'English': 'Verified Report'
+    }),
+    ('confirm_language', {
+        'English': 'Confirm Language',
+        'Hindi': 'भाषा की पुष्टि करें',
+        'Bengali': 'भाषा निश्चित करें',
+        'Telugu': 'భాషను నిర్ధారించండి',
+        'Tamil': 'மொழியை உறுதிப்படுத்தவும்',
+        'Marathi': 'भाषेची पुष्टी करा',
+        'Gujarati': 'ભાષાની પુષ્ટિ કરો',
+        'Kannada': 'ಭಾಷೆಯನ್ನು ದೃಢೀಕರಿಸಿ',
+        'Malayalam': 'ഭാഷ സ്ഥിരീകരിക്കുക',
+        'Punjabi': 'ਭਾਸ਼ਾ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ',
+        'Odia': 'ଭାଷା ନିଶ୍ଚିତ କରନ୍ତୁ',
+        'Urdu': 'زبان کی تصدیق کریں'
     })
 ]
 
