@@ -28,25 +28,27 @@ class _MedicineControllers {
   String frequency;
   String duration;
   String instructions;
+  String foodIntake;
 
   _MedicineControllers({
     required this.id,
-    this.name = 'Telmisartan 40mg',
+    this.name = '',
     this.dosage = '1 Tablet',
-    this.frequency = 'Once Daily (Morning)',
-    this.duration = '30 Days',
-    this.instructions = 'After breakfast',
+    this.frequency = 'Once Daily',
+    this.duration = '',
+    this.instructions = '',
+    this.foodIntake = 'After Meal',
   });
 
   Map<String, dynamic> toJson() {
     final freq = frequency.toLowerCase();
-    final inst = instructions.toLowerCase();
+    final foodLower = foodIntake.toLowerCase();
 
-    final morning = freq.contains('morning') || freq.contains('1-') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily');
-    final afternoon = freq.contains('afternoon') || freq.contains('-1-') || freq.contains('1-1-1') || freq.contains('daily');
-    final night = freq.contains('night') || freq.contains('-1') || freq.contains('1-0-1') || freq.contains('1-1-1') || freq.contains('daily');
+    final morning = freq.contains('once') || freq.contains('twice') || freq.contains('thrice') || freq.contains('four') || freq.contains('daily');
+    final afternoon = freq.contains('thrice') || freq.contains('four');
+    final night = freq.contains('twice') || freq.contains('thrice') || freq.contains('four');
 
-    final beforeFood = inst.contains('before') || inst.contains('empty');
+    final beforeFood = foodLower.contains('before') || foodLower.contains('empty');
     final afterFood = !beforeFood;
 
     return {
@@ -54,7 +56,7 @@ class _MedicineControllers {
       'dosage': dosage,
       'frequency': frequency,
       'duration': duration,
-      'instructions': instructions,
+      'instructions': instructions.isEmpty ? foodIntake : '$foodIntake, $instructions',
       'morning': morning,
       'afternoon': afternoon,
       'night': night,
@@ -80,35 +82,19 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
   final _qualificationController = TextEditingController(text: 'MD (Cardiology), FACC');
   String _status = 'Active';
   
-  final _diagnosisController = TextEditingController(text: 'Mild Hypertension & Preventive Checkup');
-  final _notesController = TextEditingController(text: 'Low sodium diet, Regular exercise. Next follow up after 30 days.');
+  final _diagnosisController = TextEditingController(text: '');
+  final _notesController = TextEditingController(text: '');
   
   bool _isSaving = false;
 
   final List<_MedicineControllers> _medicines = [
     _MedicineControllers(
       id: '1',
-      name: 'Telmisartan 40mg',
+      name: '',
       dosage: '1 Tablet',
-      frequency: 'Once Daily (Morning)',
-      duration: '30 Days',
-      instructions: 'After breakfast',
-    ),
-    _MedicineControllers(
-      id: '2',
-      name: 'Amlodipine 5mg',
-      dosage: '1 Tablet',
-      frequency: 'Once Daily (Night)',
-      duration: '30 Days',
-      instructions: 'After dinner',
-    ),
-    _MedicineControllers(
-      id: '3',
-      name: 'Multivitamin Complex',
-      dosage: '1 Capsule',
       frequency: 'Once Daily',
-      duration: '15 Days',
-      instructions: 'After meal',
+      duration: '',
+      instructions: '',
     ),
   ];
 
@@ -137,11 +123,11 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
     setState(() {
       _medicines.add(_MedicineControllers(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: 'Paracetamol 650mg',
+        name: '',
         dosage: '1 Tablet',
-        frequency: 'Twice Daily',
-        duration: '5 Days',
-        instructions: 'After meal',
+        frequency: 'Once Daily',
+        duration: '',
+        instructions: '',
       ));
     });
   }
@@ -342,19 +328,24 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ADDRESS',
-                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF94A3B8)),
-                  ),
-                  Text(
-                    '123, Green Park, New Delhi - 110016',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ADDRESS',
+                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF94A3B8)),
+                    ),
+                    Text(
+                      '123, Green Park, New Delhi - 110016',
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.push(
@@ -475,6 +466,7 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _hospitalName,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [
@@ -501,6 +493,7 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _doctorName,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [
@@ -521,6 +514,7 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _status,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [
@@ -627,7 +621,7 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '#${index + 1}  ${med.name}',
+                          '#${index + 1}  ${med.name.isEmpty ? "New Medicine" : med.name}',
                           style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                         ),
                         IconButton(
@@ -639,11 +633,23 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
+                    TextFormField(
+                      initialValue: med.name,
+                      decoration: _inputDecoration(label: 'Medicine Name', hint: 'e.g. Paracetamol 650mg'),
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
+                      onChanged: (val) {
+                        setState(() {
+                          med.name = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: med.dosage,
+                            isExpanded: true,
                             decoration: _inputDecoration(label: 'Dosage'),
                             items: const [
                               DropdownMenuItem(value: '1 Tablet', child: Text('1 Tablet')),
@@ -657,19 +663,20 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: med.frequency,
+                            isExpanded: true,
                             decoration: _inputDecoration(label: 'Frequency'),
                             items: const [
-                              DropdownMenuItem(value: 'Once Daily (Morning)', child: Text('Once Daily (M)')),
-                              DropdownMenuItem(value: 'Once Daily (Night)', child: Text('Once Daily (N)')),
                               DropdownMenuItem(value: 'Once Daily', child: Text('Once Daily')),
                               DropdownMenuItem(value: 'Twice Daily', child: Text('Twice Daily')),
+                              DropdownMenuItem(value: 'Thrice Daily', child: Text('Thrice Daily')),
+                              DropdownMenuItem(value: 'Four Times Daily', child: Text('Four Times Daily')),
                             ],
                             onChanged: (val) => setState(() => med.frequency = val!),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -681,13 +688,25 @@ class _AddPrescriptionScreenState extends State<AddPrescriptionScreen> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: TextFormField(
-                            initialValue: med.instructions,
-                            decoration: _inputDecoration(label: 'Instructions'),
-                            onChanged: (val) => med.instructions = val,
+                          child: DropdownButtonFormField<String>(
+                            value: med.foodIntake,
+                            isExpanded: true,
+                            decoration: _inputDecoration(label: 'Food Intake'),
+                            items: const [
+                              DropdownMenuItem(value: 'After Meal', child: Text('After Meal')),
+                              DropdownMenuItem(value: 'Before Meal', child: Text('Before Meal')),
+                              DropdownMenuItem(value: 'Empty Stomach', child: Text('Empty Stomach')),
+                            ],
+                            onChanged: (val) => setState(() => med.foodIntake = val!),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      initialValue: med.instructions,
+                      decoration: _inputDecoration(label: 'Instructions', hint: 'e.g. Take with warm water'),
+                      onChanged: (val) => med.instructions = val,
                     ),
                   ],
                 ),

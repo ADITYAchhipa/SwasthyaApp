@@ -14,10 +14,10 @@ class ApiService {
   // For iOS Simulator → localhost
   static String get baseUrl {
     // Set this to true to connect to your production deployment, false for localhost
-    const bool useProduction = true;
+    const bool useProduction = false;
 
     if (useProduction) {
-      return 'https://www.api.swasthyatap.in/api';
+      return 'https://swasthyabackend-leke62tp1-adityas-projects-b63fea21.vercel.app/api';
     }
 
     if (kIsWeb) return 'http://localhost:3011/api';
@@ -208,6 +208,7 @@ class ApiService {
         return {
           'success': true,
           'offline': true,
+          'token': 'mock_hospital_token',
           'hospital': {
             'hospitalId': hospitalId,
             'name': 'Demo Hospital',

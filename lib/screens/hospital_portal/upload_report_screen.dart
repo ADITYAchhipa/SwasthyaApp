@@ -23,8 +23,8 @@ class UploadReportScreen extends StatefulWidget {
 
 class _UploadReportScreenState extends State<UploadReportScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController(text: 'Blood Test - CBC');
-  final _issuerController = TextEditingController(text: 'Lal Pathlabs');
+  final _titleController = TextEditingController(text: '');
+  final _issuerController = TextEditingController(text: '');
   String _doctorName = 'Dr. Amit Shah';
   String _dateStr = '24 Jun 2026';
   String _status = 'Verified';
@@ -32,12 +32,12 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
   String _department = 'Hematology';
   String _category = 'Blood Tests';
   bool _isAbnormal = false;
-  final _tagsController = TextEditingController(text: 'CBC, Blood Test, Routine');
+  final _tagsController = TextEditingController(text: '');
 
   XFile? _selectedFile;
   Uint8List? _fileBytes;
-  String _fileName = 'CBC_Report_24Jun2026.pdf';
-  String _fileSize = '1.2 MB';
+  String _fileName = 'No file attached';
+  String _fileSize = '0 KB';
 
   bool _isUploading = false;
 
@@ -88,7 +88,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
         .where((e) => e.isNotEmpty)
         .toList();
 
-    final updatedProfile = await ApiService.uploadMedicalReport(
+    var updatedProfile = await ApiService.uploadMedicalReport(
       widget.profile.id,
       title: _titleController.text.trim(),
       issuer: _issuerController.text.trim(),
@@ -127,12 +127,11 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Upload completed! Report associated with profile.'),
-          backgroundColor: AppTheme.accentGreen,
+          content: Text('Failed to upload report. Please check connection.'),
+          backgroundColor: AppTheme.accentRed,
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context);
     }
   }
 
@@ -320,6 +319,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
             value: _doctorName,
+            isExpanded: true,
             decoration: _inputDecoration(),
             style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
             items: const [
@@ -381,6 +381,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _status,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [
@@ -414,6 +415,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _department,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [
@@ -438,6 +440,7 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _category,
+                      isExpanded: true,
                       decoration: _inputDecoration(),
                       style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                       items: const [

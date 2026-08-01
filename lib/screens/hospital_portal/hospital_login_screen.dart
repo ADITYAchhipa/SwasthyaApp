@@ -158,7 +158,7 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
         final hospitalData = result['hospital'] as Map<String, dynamic>?;
         final hId = hospitalData?['hospitalId'] as String? ?? _hospitalIdController.text.trim();
         final hName = hospitalData?['name'] as String? ?? 'Hospital';
-        ApiService.setHospitalToken(result['token'] as String, hId, hName);
+        ApiService.setHospitalToken((result['token'] ?? '') as String, hId, hName);
 
         setState(() {
           _isVerifying = false;
