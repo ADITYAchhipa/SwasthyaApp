@@ -33,19 +33,87 @@ app.use('/api/blood-requests', bloodRequestRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/health-reports', healthRoutes);
 
+// ─── Database Connection Helper ────────────────────────────────────────────────
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
+let dbConnectionError = null;
+
+const connectDb = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return;
+  }
+  try {
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    console.log('✅ Connected to MongoDB');
+    dbConnectionError = null;
+  } catch (err) {
+    console.error('❌ MongoDB connection failed:', err.message);
+    dbConnectionError = err.message;
+    throw err;
+  }
+};
+
+// Auto-connect on startup
+connectDb().catch((err) => {
+  if (!process.env.VERCEL && mongoUri !== 'mongodb://localhost:27017/swasthyatap') {
+    console.log('🔄 Attempting fallback connection to local MongoDB...');
+    mongoose
+      .connect('mongodb://localhost:27017/swasthyatap')
+      .then(() => console.log('✅ Connected to local MongoDB fallback!'))
+      .catch((fallbackErr) => {
+        console.error('❌ Local fallback MongoDB connection failed:', fallbackErr.message);
+        process.exit(1);
+      });
+  } else if (!process.env.VERCEL) {
+    process.exit(1);
+  }
+});
+
+// Middleware to ensure DB connection is active before running queries (handles serverless cold starts)
+app.use(async (req, res, next) => {
+  // Don't block health routes
+  const isHealthRoute = req.path === '/health' || req.path === '/api/health' || req.path === '/api/ping';
+  if (isHealthRoute) {
+    return next();
+  }
+
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  try {
+    await connectDb();
+    next();
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: err.message,
+    });
+  }
+});
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
-const healthCheck = (req, res) => {
+const healthCheck = async (req, res) => {
   const mongoStatus = {
     0: 'disconnected',
     1: 'connected',
     2: 'connecting',
     3: 'disconnecting',
   };
+
+  // Attempt connection on-demand if disconnected
+  if (mongoose.connection.readyState === 0) {
+    try {
+      await connectDb();
+    } catch (_) {}
+  }
+
   res.json({
     status: 'healthy',
     message: 'SwasthyaTap API is running',
     version: '1.0.0',
     mongodb: mongoStatus[mongoose.connection.readyState] || 'unknown',
+    mongoError: dbConnectionError,
     timestamp: new Date().toISOString(),
   });
 };
@@ -64,30 +132,6 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
-
-// ─── Database + Server Start ──────────────────────────────────────────────────
-const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
-
-mongoose
-  .connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
-  .then(() => {
-    console.log('✅ Connected to MongoDB');
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection failed:', err.message);
-    if (!process.env.VERCEL && mongoUri !== 'mongodb://localhost:27017/swasthyatap') {
-      console.log('🔄 Attempting fallback connection to local MongoDB...');
-      mongoose
-        .connect('mongodb://localhost:27017/swasthyatap')
-        .then(() => console.log('✅ Connected to local MongoDB fallback!'))
-        .catch((fallbackErr) => {
-          console.error('❌ Local fallback MongoDB connection failed:', fallbackErr.message);
-          process.exit(1);
-        });
-    } else if (!process.env.VERCEL) {
-      process.exit(1);
-    }
-  });
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
