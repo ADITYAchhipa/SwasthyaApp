@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const fs = require('fs');
 
 const mongoUri = 'mongodb+srv://adichhipa2_db_user:Oo2WWuEiChjI7Ab8@swasthyatap.abo8hz9.mongodb.net/swasthyatap?appName=swasthyatap';
 
@@ -12,22 +13,20 @@ const HospitalSchema = new mongoose.Schema({
 const Hospital = mongoose.model('Hospital', HospitalSchema);
 
 async function run() {
+  let log = "";
   try {
-    await mongoose.connect(mongoUri);
-    console.log("Connected to MongoDB!");
+    log += "Connecting to MongoDB...\n";
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    log += "Connected to MongoDB successfully!\n";
     
-    // Find HOSP-004
     const hospital = await Hospital.findOne({ hospitalId: 'HOSP-004' });
-    console.log("HOSP-004 Record:", JSON.stringify(hospital, null, 2));
-
-    // Find all hospitals to see what exists
-    const all = await Hospital.find({}, { hospitalId: 1, name: 1, registeredPhone: 1 });
-    console.log("\nAll Hospitals in Database:");
-    console.log(JSON.stringify(all, null, 2));
-    
-    await mongoose.disconnect();
+    log += "HOSP-004: " + JSON.stringify(hospital) + "\n";
   } catch (err) {
-    console.error("Error:", err);
+    log += "Error connecting to MongoDB: " + err.message + "\n";
+  } finally {
+    fs.writeFileSync('/home/aditya/clones/Card/scratch/check_db_output.txt', log);
+    await mongoose.disconnect();
+    process.exit(0);
   }
 }
 
