@@ -34,7 +34,9 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/health-reports', healthRoutes);
 
 // ─── Database Connection Helper ────────────────────────────────────────────────
-const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
+let mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
+// Sanitize connection string: remove accidental leading/trailing quotes and spaces
+mongoUri = mongoUri.trim().replace(/^["']|["']$/g, '');
 let dbConnectionError = null;
 
 const connectDb = async () => {
