@@ -577,10 +577,12 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       builder: (BuildContext context) {
         String? qrLink;
         bool isLoading = true;
+        bool hasError = false;
+        String? errorMessage;
 
         return StatefulBuilder(
           builder: (context, setState) {
-            if (isLoading && qrLink == null) {
+            if (isLoading && qrLink == null && !hasError) {
               ApiService.fetchNfcWriteUrl(citizen.id).then((result) {
                 if (result['success'] == true && result['nfcUrl'] != null) {
                   final String rawUrl = result['nfcUrl'];
@@ -590,18 +592,16 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     isLoading = false;
                   });
                 } else {
-                  // Fallback: generate a 64-character SHA-256 hash of the citizen ID
-                  final String fallbackHash = sha256.convert(utf8.encode(citizen.id)).toString();
                   setState(() {
-                    qrLink = "www.nfc.swasthyatap.in/card/$fallbackHash";
+                    hasError = true;
+                    errorMessage = result['message'] as String? ?? 'NFC Card not written yet';
                     isLoading = false;
                   });
                 }
               }).catchError((err) {
-                // Fallback: generate a 64-character SHA-256 hash of the citizen ID
-                final String fallbackHash = sha256.convert(utf8.encode(citizen.id)).toString();
                 setState(() {
-                  qrLink = "www.nfc.swasthyatap.in/card/$fallbackHash";
+                  hasError = true;
+                  errorMessage = 'Failed to reach server';
                   isLoading = false;
                 });
               });
@@ -678,22 +678,44 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                                       valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
                                     ),
                                   )
-                                : Image.network(
-                                    "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(qrLink!)}",
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return const Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                                : hasError
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.error_outline_rounded, size: 44, color: AppTheme.accentRed),
+                                            const SizedBox(height: 12),
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                              child: Text(
+                                                errorMessage ?? 'NFC Card Required',
+                                                textAlign: TextAlign.center,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppTheme.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Center(
-                                        child: Icon(Icons.qr_code_rounded, size: 80, color: Colors.grey),
-                                      );
-                                    },
-                                  ),
+                                      )
+                                    : Image.network(
+                                        "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(qrLink!)}",
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Center(
+                                            child: Icon(Icons.qr_code_rounded, size: 80, color: Colors.grey),
+                                          );
+                                        },
+                                      ),
                           ),
                         ),
                       ),
@@ -701,21 +723,25 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
+                          color: hasError ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFA7F3D0), width: 1),
+                          border: Border.all(color: hasError ? const Color(0xFFFCA5A5) : const Color(0xFFA7F3D0), width: 1),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.verified_user_rounded, color: Color(0xFF059669), size: 16),
+                            Icon(
+                              hasError ? Icons.warning_amber_rounded : Icons.verified_user_rounded,
+                              color: hasError ? const Color(0xFFDC2626) : const Color(0xFF059669),
+                              size: 16,
+                            ),
                             const SizedBox(width: 6),
                             Text(
-                              "Verified SwasthyaTap Link",
+                              hasError ? "Card Registration Required" : "Verified SwasthyaTap Link",
                               style: GoogleFonts.outfit(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF047857),
+                                color: hasError ? const Color(0xFFB91C1C) : const Color(0xFF047857),
                               ),
                             ),
                           ],
