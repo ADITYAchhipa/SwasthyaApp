@@ -14,14 +14,16 @@ class ApiService {
   // For iOS Simulator → localhost
   static String get baseUrl {
     // Set this to true to connect to your production deployment, false for localhost
-    const bool useProduction = false;
+    const bool useProduction = true;
 
     if (useProduction) {
-      return 'https://swasthyabackend-leke62tp1-adityas-projects-b63fea21.vercel.app/api';
+      return 'https://swasthyabackend.vercel.app/api';
     }
 
     if (kIsWeb) return 'http://localhost:3011/api';
     try {
+      // NOTE: For physical Android devices testing local server, 
+      // replace '10.0.2.2' with your machine's local IP address (e.g., '192.168.1.x')
       if (Platform.isAndroid) return 'http://10.0.2.2:3011/api';
     } catch (_) {}
     return 'http://localhost:3011/api';

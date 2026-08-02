@@ -579,34 +579,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.healing_rounded,
+                                color: accentColor,
+                                size: 18,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.healing_rounded,
-                              color: accentColor,
-                              size: 18,
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                "SwasthyaTap",
+                                style: TextStyle(
+                                  fontFamily: 'Outfit',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: AppTheme.textPrimary,
+                                  letterSpacing: 0.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "SwasthyaTap",
-                            style: TextStyle(
-                              fontFamily: 'Outfit',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: AppTheme.textPrimary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Language Switcher Pill (always visible on info pages)
                           if (_currentPage > 0)
@@ -621,6 +628,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   border: Border.all(color: AppTheme.accentTeal.withOpacity(0.3)),
                                 ),
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const Icon(Icons.language_rounded, size: 14, color: AppTheme.accentTeal),
                                     const SizedBox(width: 4),

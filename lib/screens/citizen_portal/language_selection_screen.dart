@@ -78,32 +78,34 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                           padding: const EdgeInsets.all(12),
                         ),
                       ),
-                      const Spacer(),
-                      // SwasthyaTap Logo representation
-                      Column(
-                        children: [
-                          Row(
+                      Expanded(
+                        child: Center(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.favorite_rounded, color: AppTheme.accentTeal, size: 18),
-                              SizedBox(width: 4),
-                              Text(
-                                'SwasthyaTap.in',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.favorite_rounded, color: AppTheme.accentTeal, size: 18),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'SwasthyaTap.in',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Text(
+                                'One Tap Can Save Your Life',
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
-                          const Text(
-                            'One Tap Can Save Your Life',
-                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 8, fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                        ),
                       ),
-                      const Spacer(),
                       const SizedBox(width: 44), // balance back button space
                     ],
                   ),
