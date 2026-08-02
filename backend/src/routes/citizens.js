@@ -103,7 +103,7 @@ router.get('/:id', async (req, res) => {
     res.json({ success: true, citizen: formatCitizen(citizen) });
   } catch (err) {
     console.error('Fetch citizen error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error', error: err.message, stack: err.stack });
   }
 });
 
