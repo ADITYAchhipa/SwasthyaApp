@@ -163,6 +163,7 @@ const healthCheck = async (req, res) => {
     version: '1.0.0',
     mongodb: mongoStatus[mongoose.connection.readyState] || 'unknown',
     mongoError: dbConnectionError,
+    mongoUriMasked: mongoUri ? mongoUri.replace(/:([^@]+)@/, ':****@') : 'not set',
     timestamp: new Date().toISOString(),
   });
 };
