@@ -42,6 +42,7 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
   MedicalProfile? _citizen;
   String? _nfcUrl;
   String? _errorMessage;
+  String? _writingStatus;
 
   // Form Controllers for Patient Profile
   late TextEditingController _fullNameController;
@@ -291,6 +292,7 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
     setState(() {
       _step = _WriterStep.writing;
       _errorMessage = null;
+      _writingStatus = null;
     });
 
     // Get URL from backend
@@ -315,10 +317,20 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
     }
 
     // Write to NFC tag
+    _startNfcWritingSession();
+  }
+
+  Future<void> _startNfcWritingSession() async {
     try {
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
           try {
+            if (mounted) {
+              setState(() {
+                _writingStatus = 'Writing data... Please do not remove the tag.';
+              });
+            }
+
             var ndef = Ndef.from(tag);
             
             // Build the URI record
@@ -334,11 +346,9 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
 
             if (ndef != null) {
               if (!ndef.isWritable) {
-                await NfcManager.instance.stopSession(errorMessage: 'Tag not writable');
                 if (mounted) {
                   setState(() {
-                    _step = _WriterStep.error;
-                    _errorMessage = 'NFC tag is not writable.';
+                    _writingStatus = 'NFC tag is not writable. Try another tag.';
                   });
                 }
                 return;
@@ -349,11 +359,9 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
                 debugPrint('NFC tag size is ${ndef.maxSize} bytes. Both records (size: ${message.byteLength} bytes) too large. Falling back to URI only.');
                 message = NdefMessage([uriRecord]);
                 if (message.byteLength > ndef.maxSize) {
-                  await NfcManager.instance.stopSession(errorMessage: 'URL too long');
                   if (mounted) {
                     setState(() {
-                      _step = _WriterStep.error;
-                      _errorMessage = 'URL too long for this tag.';
+                      _writingStatus = 'URL too long for this tag. Try another tag.';
                     });
                   }
                   return;
@@ -363,7 +371,12 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
               await ndef.write(message);
               await NfcManager.instance.stopSession();
               HapticFeedback.heavyImpact();
-              if (mounted) setState(() => _step = _WriterStep.success);
+              if (mounted) {
+                setState(() {
+                  _step = _WriterStep.success;
+                  _writingStatus = null;
+                });
+              }
             } else {
               // Try to format it as NDEF (Android only)
               final formattable = NdefFormatable.from(tag);
@@ -378,35 +391,61 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
                 }
                 await NfcManager.instance.stopSession();
                 HapticFeedback.heavyImpact();
-                if (mounted) setState(() => _step = _WriterStep.success);
-              } else {
-                await NfcManager.instance.stopSession(errorMessage: 'Unsupported tag');
                 if (mounted) {
                   setState(() {
-                    _step = _WriterStep.error;
-                    _errorMessage = 'NFC tag does not support NDEF.';
+                    _step = _WriterStep.success;
+                    _writingStatus = null;
+                  });
+                }
+              } else {
+                if (mounted) {
+                  setState(() {
+                    _writingStatus = 'NFC tag does not support NDEF formatting.';
                   });
                 }
               }
             }
           } catch (e) {
-            await NfcManager.instance.stopSession(errorMessage: 'Write failed');
+            debugPrint('NFC write error within onDiscovered: $e');
+            try {
+              await NfcManager.instance.stopSession();
+            } catch (_) {}
             if (mounted) {
               setState(() {
-                _step = _WriterStep.error;
-                _errorMessage = 'Write failed: $e';
+                _writingStatus = 'Write failed. Please hold tag steady and try again.';
               });
+            }
+            // Restart session
+            if (mounted && _step == _WriterStep.writing) {
+              _startNfcWritingSession();
             }
           }
         },
       );
     } catch (e) {
+      debugPrint('NFC session start error: $e');
       if (mounted) {
         setState(() {
-          _step = _WriterStep.error;
-          _errorMessage = 'NFC session error: $e';
+          _writingStatus = 'NFC reader error: $e. Re-starting...';
         });
       }
+      // Retry starting session after a short delay
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted && _step == _WriterStep.writing) {
+        _startNfcWritingSession();
+      }
+    }
+  }
+
+  Future<void> _cancelWriting() async {
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _step = _WriterStep.patientProfileForm;
+        _writingStatus = null;
+      });
     }
   }
 
@@ -1045,31 +1084,66 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
   Widget _buildWritingState() {
     return Center(
       key: const ValueKey('writing'),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        ScaleTransition(
-          scale: _pulseAnim,
-          child: Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                const Color(0xFF00C896).withOpacity(0.3),
-                const Color(0xFF004D40).withOpacity(0.1),
-                Colors.transparent,
-              ]),
-              border: Border.all(color: const Color(0xFF00C896).withOpacity(0.5), width: 2),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ScaleTransition(
+              scale: _pulseAnim,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF00C896).withOpacity(0.3),
+                    const Color(0xFF004D40).withOpacity(0.1),
+                    Colors.transparent,
+                  ]),
+                  border: Border.all(color: const Color(0xFF00C896).withOpacity(0.5), width: 2),
+                ),
+                child: const Icon(Icons.contactless_rounded, color: Color(0xFF00C896), size: 72),
+              ),
             ),
-            child: const Icon(Icons.contactless_rounded, color: Color(0xFF00C896), size: 72),
-          ),
+            const SizedBox(height: 32),
+            Text(
+              'Hold NFC Tag to Phone',
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _writingStatus ?? 'Place an empty NFC tag\nagainst the back of your phone',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _writingStatus != null ? const Color(0xFF00C896) : Colors.white54,
+                fontSize: 14,
+                fontWeight: _writingStatus != null ? FontWeight.bold : FontWeight.normal,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(color: Color(0xFF00C896), strokeWidth: 2.5),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: 200,
+              child: OutlinedButton(
+                onPressed: _cancelWriting,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white30, width: 1.2),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 32),
-        Text('Hold NFC Tag to Phone', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        Text('Place an empty NFC tag\nagainst the back of your phone', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 14, height: 1.6)),
-        const SizedBox(height: 32),
-        const CircularProgressIndicator(color: Color(0xFF00C896), strokeWidth: 2),
-      ]),
+      ),
     );
   }
 
@@ -1091,7 +1165,7 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
             child: const Icon(Icons.check_circle_rounded, color: Color(0xFF00C896), size: 64),
           ),
           const SizedBox(height: 28),
-          Text('Card Written!', style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text('Write Completed!', style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           Text(
             'NFC card for ${_citizen?.fullName ?? 'Patient'} has been programmed successfully.',

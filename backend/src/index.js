@@ -38,16 +38,49 @@ let mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
 // Sanitize connection string: remove accidental leading/trailing quotes and spaces
 mongoUri = mongoUri.trim().replace(/^["']|["']$/g, '');
 let dbConnectionError = null;
+let cachedConnection = null;
 
 const connectDb = async () => {
+  // If Mongoose thinks it is connected, verify with a quick ping
   if (mongoose.connection.readyState === 1) {
-    return;
+    try {
+      await Promise.race([
+        mongoose.connection.db.admin().ping(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 1000))
+      ]);
+      return;
+    } catch (err) {
+      console.warn('⚠️ Cached connection ping failed. Closing connection...', err.message);
+      try {
+        await mongoose.connection.close();
+      } catch (_) {}
+      cachedConnection = null;
+    }
   }
+
+  if (cachedConnection) {
+    try {
+      await cachedConnection;
+      return;
+    } catch (err) {
+      cachedConnection = null;
+    }
+  }
+
+  console.log('🔄 Connecting to MongoDB...');
+  // Set bufferCommands to false to prevent queries from hanging when disconnected
+  mongoose.set('bufferCommands', false);
+
+  cachedConnection = mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 5000,
+  });
+
   try {
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    await cachedConnection;
     console.log('✅ Connected to MongoDB');
     dbConnectionError = null;
   } catch (err) {
+    cachedConnection = null;
     console.error('❌ MongoDB connection failed:', err.message);
     dbConnectionError = err.message;
     throw err;
@@ -82,10 +115,6 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  if (mongoose.connection.readyState === 1) {
-    return next();
-  }
-
   try {
     await connectDb();
     next();
@@ -107,11 +136,25 @@ const healthCheck = async (req, res) => {
     3: 'disconnecting',
   };
 
-  // Attempt connection on-demand if disconnected
-  if (mongoose.connection.readyState === 0) {
+  // Attempt connection on-demand or verify connection health
+  if (mongoose.connection.readyState !== 1) {
     try {
       await connectDb();
     } catch (_) {}
+  } else {
+    // If readyState is 1, let's verify with an actual ping to be sure
+    try {
+      await Promise.race([
+        mongoose.connection.db.admin().ping(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 1000))
+      ]);
+    } catch (err) {
+      console.warn('⚠️ Healthcheck connection ping failed. Reconnecting...');
+      try {
+        await mongoose.connection.close();
+        await connectDb();
+      } catch (_) {}
+    }
   }
 
   res.json({
