@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../providers/swasthya_tap_provider.dart';
+import '../../models/models.dart';
 import 'scanned_profile_screen.dart';
 
 class NfcCardReaderScreen extends StatefulWidget {
@@ -84,21 +87,56 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
               return;
             }
 
+            String? extractedId;
+            MedicalProfile? offlineProfile;
+
             for (var record in message.records) {
               final payload = record.payload;
               if (payload.isNotEmpty) {
-                final recordText = utf8.decode(payload.sublist(1), allowMalformed: true);
-                if (recordText.contains('/card/')) {
-                  final parts = recordText.split('/card/');
+                final recordTextSub1 = utf8.decode(payload.sublist(1), allowMalformed: true);
+                final recordTextFull = utf8.decode(payload, allowMalformed: true);
+
+                if (recordTextSub1.contains('/card/')) {
+                  final parts = recordTextSub1.split('/card/');
                   if (parts.length > 1) {
-                    final extractedId = parts[1].split('?').first.trim();
-                    _handleSuccess(extractedId);
-                    return;
+                    extractedId = parts[1].split('?').first.trim();
+                  }
+                } else if (recordTextFull.contains('/card/')) {
+                  final parts = recordTextFull.split('/card/');
+                  if (parts.length > 1) {
+                    extractedId = parts[1].split('?').first.trim();
                   }
                 }
+
+                // Try to parse JSON from payload (handles Text/Mime records)
+                try {
+                  String cleanText = recordTextFull;
+                  final statusByte = payload[0];
+                  final langCodeLength = statusByte & 0x3F;
+                  if (langCodeLength + 1 < payload.length) {
+                    cleanText = utf8.decode(payload.sublist(1 + langCodeLength), allowMalformed: true);
+                  }
+
+                  final start = cleanText.indexOf('{');
+                  final end = cleanText.lastIndexOf('}');
+                  if (start != -1 && end != -1 && end > start) {
+                    final jsonStr = cleanText.substring(start, end + 1);
+                    final data = jsonDecode(jsonStr);
+                    if (data is Map<String, dynamic> && data.containsKey('id')) {
+                      final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+                      offlineProfile = provider.createProfileFromNdef(data);
+                      extractedId ??= offlineProfile.id;
+                    }
+                  }
+                } catch (_) {}
               }
             }
-            _updateStatus('Valid SwasthyaTap payload not detected.');
+
+            if (extractedId != null) {
+              _handleSuccess(extractedId, offlineProfile);
+            } else {
+              _updateStatus('Valid SwasthyaTap payload not detected.');
+            }
           } catch (e) {
             _updateStatus('Error reading card: $e');
           }
@@ -116,7 +154,7 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
     });
   }
 
-  void _handleSuccess(String profileId) {
+  void _handleSuccess(String profileId, MedicalProfile? preloadedProfile) {
     HapticFeedback.heavyImpact();
     NfcManager.instance.stopSession();
     if (mounted) {
@@ -128,7 +166,10 @@ class _NfcCardReaderScreenState extends State<NfcCardReaderScreen> with SingleTi
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ScannedProfileScreen(profileId: profileId),
+          builder: (context) => ScannedProfileScreen(
+            profileId: profileId,
+            preloadedProfile: preloadedProfile,
+          ),
         ),
       );
     }

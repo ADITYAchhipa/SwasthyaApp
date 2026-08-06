@@ -6,9 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/platform_tags.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/translation_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/swasthya_tap_provider.dart';
 import '../../models/models.dart';
 
 enum _WriterStep { enterSwasthyaId, patientProfileForm, writing, success, error }
@@ -270,6 +273,10 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
       return;
     }
 
+    // Sync updated profile to provider cache
+    final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+    await provider.updateProfile(saveResult);
+
     setState(() {
       _citizen = saveResult;
       _isSaving = false;
@@ -312,37 +319,76 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
       await NfcManager.instance.startSession(
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
-            if (ndef == null || !ndef.isWritable) {
-              await NfcManager.instance.stopSession(errorMessage: 'Tag not writable');
-              if (mounted) {
-                setState(() {
-                  _step = _WriterStep.error;
-                  _errorMessage = 'NFC tag is not writable.';
-                });
-              }
-              return;
-            }
-
+            var ndef = Ndef.from(tag);
+            
+            // Build the URI record
             final uri = Uri.parse(_nfcUrl!);
-            final record = NdefRecord.createUri(uri);
-            final message = NdefMessage([record]);
+            final uriRecord = NdefRecord.createUri(uri);
+            
+            // Build the JSON record
+            final offlinePayload = _citizen!.toNdefPayload();
+            final jsonRecord = NdefRecord.createText(offlinePayload);
+            
+            // Try to write both records
+            var message = NdefMessage([uriRecord, jsonRecord]);
 
-            if (message.byteLength > ndef.maxSize) {
-              await NfcManager.instance.stopSession(errorMessage: 'URL too long');
-              if (mounted) {
-                setState(() {
-                  _step = _WriterStep.error;
-                  _errorMessage = 'URL too long for this tag.';
-                });
+            if (ndef != null) {
+              if (!ndef.isWritable) {
+                await NfcManager.instance.stopSession(errorMessage: 'Tag not writable');
+                if (mounted) {
+                  setState(() {
+                    _step = _WriterStep.error;
+                    _errorMessage = 'NFC tag is not writable.';
+                  });
+                }
+                return;
               }
-              return;
-            }
 
-            await ndef.write(message);
-            await NfcManager.instance.stopSession();
-            HapticFeedback.heavyImpact();
-            if (mounted) setState(() => _step = _WriterStep.success);
+              if (message.byteLength > ndef.maxSize) {
+                // Fall back to writing ONLY the URI record
+                debugPrint('NFC tag size is ${ndef.maxSize} bytes. Both records (size: ${message.byteLength} bytes) too large. Falling back to URI only.');
+                message = NdefMessage([uriRecord]);
+                if (message.byteLength > ndef.maxSize) {
+                  await NfcManager.instance.stopSession(errorMessage: 'URL too long');
+                  if (mounted) {
+                    setState(() {
+                      _step = _WriterStep.error;
+                      _errorMessage = 'URL too long for this tag.';
+                    });
+                  }
+                  return;
+                }
+              }
+
+              await ndef.write(message);
+              await NfcManager.instance.stopSession();
+              HapticFeedback.heavyImpact();
+              if (mounted) setState(() => _step = _WriterStep.success);
+            } else {
+              // Try to format it as NDEF (Android only)
+              final formattable = NdefFormatable.from(tag);
+              if (formattable != null) {
+                try {
+                  // Attempt formatting with both records
+                  await formattable.format(message);
+                } catch (err) {
+                  debugPrint('Failed to format with both records ($err). Retrying formatting with URI record only.');
+                  message = NdefMessage([uriRecord]);
+                  await formattable.format(message);
+                }
+                await NfcManager.instance.stopSession();
+                HapticFeedback.heavyImpact();
+                if (mounted) setState(() => _step = _WriterStep.success);
+              } else {
+                await NfcManager.instance.stopSession(errorMessage: 'Unsupported tag');
+                if (mounted) {
+                  setState(() {
+                    _step = _WriterStep.error;
+                    _errorMessage = 'NFC tag does not support NDEF.';
+                  });
+                }
+              }
+            }
           } catch (e) {
             await NfcManager.instance.stopSession(errorMessage: 'Write failed');
             if (mounted) {

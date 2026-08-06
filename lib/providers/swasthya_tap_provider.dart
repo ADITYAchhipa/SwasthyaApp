@@ -228,13 +228,13 @@ class SwasthyaTapProvider extends ChangeNotifier {
         // Online Mode: fetch full details from backend database
         final backendProfile = _profiles.firstWhere(
           (p) => p.id == profileId,
-          orElse: () => _createProfileFromNdef(data),
+          orElse: () => createProfileFromNdef(data),
         );
         _scannedProfile = backendProfile;
         _scannedOfflineOnly = false;
       } else {
         // Offline Mode: create a restricted profile containing ONLY the NDEF data
-        _scannedProfile = _createProfileFromNdef(data);
+        _scannedProfile = createProfileFromNdef(data);
         _scannedOfflineOnly = true;
       }
     } catch (e) {
@@ -264,7 +264,7 @@ class SwasthyaTapProvider extends ChangeNotifier {
   }
 
   // Create a minimal MedicalProfile from NDEF data
-  MedicalProfile _createProfileFromNdef(Map<String, dynamic> data) {
+  MedicalProfile createProfileFromNdef(Map<String, dynamic> data) {
     final contactsJson = data['contacts'] as List? ?? [];
     final contacts = contactsJson
         .map((c) => EmergencyContact.fromJson(c as Map<String, dynamic>))

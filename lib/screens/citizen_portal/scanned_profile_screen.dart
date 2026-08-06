@@ -11,7 +11,8 @@ import 'card_viewer_screen.dart'; // To reuse HeartEcgPainter
 
 class ScannedProfileScreen extends StatefulWidget {
   final String profileId;
-  const ScannedProfileScreen({Key? key, this.profileId = 'x7k9m2'}) : super(key: key);
+  final MedicalProfile? preloadedProfile;
+  const ScannedProfileScreen({Key? key, this.profileId = 'x7k9m2', this.preloadedProfile}) : super(key: key);
 
   @override
   State<ScannedProfileScreen> createState() => _ScannedProfileScreenState();
@@ -26,7 +27,11 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _profileFuture = ApiService.getCitizen(widget.profileId);
+    if (widget.preloadedProfile != null) {
+      _profileFuture = Future.value(widget.preloadedProfile);
+    } else {
+      _profileFuture = ApiService.getCitizen(widget.profileId);
+    }
   }
 
   // Expansion states for the sections

@@ -72,9 +72,13 @@ connectDb().catch((err) => {
 
 // Middleware to ensure DB connection is active before running queries (handles serverless cold starts)
 app.use(async (req, res, next) => {
-  // Don't block health routes
-  const isHealthRoute = req.path === '/health' || req.path === '/api/health' || req.path === '/api/ping';
-  if (isHealthRoute) {
+  // Don't block health/cron routes
+  const isBypassRoute = req.path === '/health' || 
+                        req.path === '/api/health' || 
+                        req.path === '/api/ping' || 
+                        req.path === '/cron' || 
+                        req.path === '/api/cron';
+  if (isBypassRoute) {
     return next();
   }
 
@@ -123,6 +127,17 @@ const healthCheck = async (req, res) => {
 app.get('/health', healthCheck);
 app.get('/api/health', healthCheck);
 app.get('/api/ping', healthCheck);
+
+// ─── Cron Keep-Alive Route (Bypasses Database Connection) ───────────────────
+const cronHandler = (req, res) => {
+  res.json({
+    status: 'active',
+    message: 'Cron ping successful',
+    timestamp: new Date().toISOString(),
+  });
+};
+app.get('/cron', cronHandler);
+app.get('/api/cron', cronHandler);
 
 // ─── 404 Fallback ─────────────────────────────────────────────────────────────
 app.use((req, res) => {
