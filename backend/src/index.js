@@ -73,8 +73,8 @@ const connectDb = async () => {
   }
 
   console.log('🔄 Connecting to MongoDB...');
-  // Set bufferCommands to false to prevent queries from hanging when disconnected
-  mongoose.set('bufferCommands', false);
+  // Set bufferCommands to true to buffer queries during transient connection states
+  mongoose.set('bufferCommands', true);
 
   cachedConnection = mongoose.connect(mongoUri, {
     serverSelectionTimeoutMS: 5000,
@@ -110,12 +110,10 @@ connectDb().catch((err) => {
 
 // Middleware to ensure DB connection is active before running queries (handles serverless cold starts)
 app.use(async (req, res, next) => {
-  // Don't block health/cron routes
+  // Don't block health routes (cron routes should run connectDb to keep connection warm)
   const isBypassRoute = req.path === '/health' || 
                         req.path === '/api/health' || 
-                        req.path === '/api/ping' || 
-                        req.path === '/cron' || 
-                        req.path === '/api/cron';
+                        req.path === '/api/ping';
   if (isBypassRoute) {
     return next();
   }
