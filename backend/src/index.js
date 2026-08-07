@@ -41,6 +41,11 @@ let dbConnectionError = null;
 let cachedConnection = null;
 
 const connectDb = async () => {
+  // If connection is disconnected or disconnecting, clear cachedConnection to force a new connection
+  if (mongoose.connection.readyState === 0 || mongoose.connection.readyState === 3) {
+    cachedConnection = null;
+  }
+
   // If Mongoose thinks it is connected, verify with a quick ping
   if (mongoose.connection.readyState === 1) {
     try {
