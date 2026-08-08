@@ -978,4 +978,84 @@ class ApiService {
           }
         ],
       };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // HEALTH CENTERS ENDPOINTS (Hospitals, PHCs, Blood Banks)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Fetch all registered hospitals from backend API
+  static Future<List<Map<String, dynamic>>> getHospitals({String? city, String? search}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (city != null && city.isNotEmpty) queryParams['city'] = city;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+      final uri = Uri.parse('$baseUrl/hospitals').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['success'] == true && data['hospitals'] is List) {
+          return (data['hospitals'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('ApiService.getHospitals error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch all registered PHCs from backend API
+  static Future<List<Map<String, dynamic>>> getPhcs({String? city, String? search}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (city != null && city.isNotEmpty) queryParams['city'] = city;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+      final uri = Uri.parse('$baseUrl/phcs').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['success'] == true && data['phcs'] is List) {
+          return (data['phcs'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('ApiService.getPhcs error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch all registered Blood Banks from backend API
+  static Future<List<Map<String, dynamic>>> getBloodBanks({String? city, String? search, String? bloodGroup}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (city != null && city.isNotEmpty) queryParams['city'] = city;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (bloodGroup != null && bloodGroup.isNotEmpty) queryParams['bloodGroup'] = bloodGroup;
+
+      final uri = Uri.parse('$baseUrl/blood-banks').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['success'] == true && data['bloodBanks'] is List) {
+          return (data['bloodBanks'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('ApiService.getBloodBanks error: $e');
+    }
+    return [];
+  }
 }

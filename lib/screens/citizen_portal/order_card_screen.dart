@@ -327,13 +327,24 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF0FDFA),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.favorite_rounded, color: Color(0xFF0D9488), size: 14),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.favorite_outline_rounded,
+                  color: Color(0xFF0D9488),
+                  size: 18,
+                ),
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Icon(
+                    Icons.wifi,
+                    color: const Color(0xFF0D9488).withOpacity(0.5),
+                    size: 8,
+                  ),
+                )
+              ],
             ),
             const SizedBox(width: 6),
             Column(

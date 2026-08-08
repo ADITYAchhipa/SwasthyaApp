@@ -163,18 +163,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Color _getAccentColorForPage(int index) {
-    switch (index) {
-      case 0:
-        return AppTheme.accentTeal;
-      case 1:
-        return AppTheme.accentTeal;
-      case 2:
-        return const Color(0xFFF97316);
-      case 3:
-        return AppTheme.accentGreen;
-      default:
-        return AppTheme.accentTeal;
-    }
+    return AppTheme.accentTeal;
   }
 
   Widget _buildBloodNetworkCustomContent(BuildContext context) {
@@ -185,7 +174,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           width: 42,
           height: 3,
           decoration: BoxDecoration(
-            color: const Color(0xFFF97316),
+            color: AppTheme.accentTeal,
             borderRadius: BorderRadius.circular(1.5),
           ),
         ),
@@ -217,15 +206,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           postText: TranslationService.t(context, 'ob_step_4_post'),
           showArrow: false,
         ),
-        const SizedBox(height: 20),
-        Text(
-          TranslationService.t(context, 'ob_blood_footer'),
-          style: TextStyle(
-            color: AppTheme.textSecondary.withOpacity(0.7),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
       ],
     );
   }
@@ -241,7 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFFF97316), size: 18),
+          Icon(icon, color: AppTheme.accentTeal, size: 18),
           const SizedBox(width: 12),
           Expanded(
             child: RichText(
@@ -258,7 +238,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     TextSpan(
                       text: boldText,
                       style: const TextStyle(
-                        color: Color(0xFFF97316),
+                        color: AppTheme.accentTeal,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -272,7 +252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: EdgeInsets.only(left: 8),
               child: Icon(
                 Icons.arrow_forward_rounded,
-                color: Color(0xFFF97316),
+                color: AppTheme.accentTeal,
                 size: 14,
               ),
             ),
@@ -353,9 +333,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.15,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.55,
             ),
             itemCount: _languages.length,
             itemBuilder: (context, index) {
@@ -370,7 +350,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected ? AppTheme.accentTeal : AppTheme.borderColor,
                       width: isSelected ? 2.0 : 1.0,
@@ -380,8 +360,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         color: isSelected
                             ? AppTheme.accentTeal.withOpacity(0.12)
                             : Colors.black.withOpacity(0.02),
-                        blurRadius: isSelected ? 8 : 4,
-                        offset: const Offset(0, 3),
+                        blurRadius: isSelected ? 6 : 2,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -389,15 +369,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     children: [
                       if (isSelected)
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          top: 5,
+                          right: 5,
                           child: Container(
                             padding: const EdgeInsets.all(2),
                             decoration: const BoxDecoration(
                               color: AppTheme.accentTeal,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.check, color: Colors.white, size: 10),
+                            child: const Icon(Icons.check, color: Colors.white, size: 8),
                           ),
                         ),
                       Center(
@@ -409,15 +389,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               style: TextStyle(
                                 color: isSelected ? AppTheme.accentTeal : AppTheme.textPrimary,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
                               lang['english']!,
                               style: TextStyle(
                                 color: isSelected ? AppTheme.accentTeal : AppTheme.textSecondary,
-                                fontSize: 10.5,
+                                fontSize: 9.5,
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                               ),
                             ),
@@ -496,7 +476,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         subtitle: TranslationService.t(context, 'ob_subtitle_2'),
         description: "",
         icon: Icons.bloodtype_rounded,
-        accentColor: const Color(0xFFF97316),
+        accentColor: AppTheme.accentTeal,
         illustrationBuilder: (context) => const OnboardingBloodNetworkWidget(),
         customContentBuilder: (context) => _buildBloodNetworkCustomContent(context),
       ),
@@ -506,7 +486,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         subtitle: TranslationService.t(context, 'ob_subtitle_3'),
         description: TranslationService.t(context, 'ob_desc_3'),
         icon: Icons.offline_bolt_rounded,
-        accentColor: AppTheme.accentGreen,
+        accentColor: AppTheme.accentTeal,
         illustrationBuilder: (context) => const OnboardingOfflineWidget(),
       ),
     ];
@@ -582,17 +562,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       Expanded(
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(7),
-                              decoration: BoxDecoration(
-                                color: accentColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                Icons.healing_rounded,
-                                color: accentColor,
-                                size: 18,
-                              ),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.favorite_outline_rounded,
+                                  color: accentColor,
+                                  size: 24,
+                                ),
+                                Positioned(
+                                  right: -2,
+                                  top: -2,
+                                  child: Icon(
+                                    Icons.wifi,
+                                    color: accentColor.withOpacity(0.5),
+                                    size: 10,
+                                  ),
+                                )
+                              ],
                             ),
                             const SizedBox(width: 8),
                             const Expanded(
@@ -766,7 +753,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     fontSize: 24,
                                     height: 1.25,
                                     letterSpacing: -0.5,
-                                    color: infoIndex == 1 ? const Color(0xFF0F766E) : AppTheme.textPrimary,
+                                    color: AppTheme.textPrimary,
                                   ),
                             ).animate(key: ValueKey('title_$index')).fade(delay: 150.ms).slideY(begin: 0.04, duration: 400.ms),
 
@@ -809,7 +796,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppTheme.accentGreen.withOpacity(0.35),
+                                      color: AppTheme.accentTeal.withOpacity(0.35),
                                       blurRadius: 15,
                                       offset: const Offset(0, 5),
                                     ),
@@ -818,7 +805,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 child: ElevatedButton(
                                   onPressed: _finishOnboarding,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.accentGreen,
+                                    backgroundColor: AppTheme.accentTeal,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
@@ -1512,12 +1499,12 @@ class ConnectionLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = const Color(0xFFF97316).withOpacity(0.3)
+      ..color = AppTheme.accentTeal.withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
 
     final pulsePaint = Paint()
-      ..color = const Color(0xFFF97316)
+      ..color = AppTheme.accentTeal
       ..style = PaintingStyle.fill;
 
     for (var node in nodes) {
@@ -1530,7 +1517,7 @@ class ConnectionLinesPainter extends CustomPainter {
         pulsePos,
         6.0,
         Paint()
-          ..color = const Color(0xFFF97316).withOpacity(0.4 * (1.0 - progress))
+          ..color = AppTheme.accentTeal.withOpacity(0.4 * (1.0 - progress))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.0,
       );

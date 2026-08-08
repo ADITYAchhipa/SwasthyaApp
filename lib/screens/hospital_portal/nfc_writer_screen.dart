@@ -1256,21 +1256,21 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
       children: [
         Stack(
           alignment: Alignment.center,
-          clipBehavior: Clip.none,
           children: [
             const Icon(
-              Icons.health_and_safety_rounded,
+              Icons.favorite_outline_rounded,
               color: Color(0xFF0F766E),
-              size: 26,
+              size: 24,
             ),
             Positioned(
-              top: -8,
-              child: const Icon(
-                Icons.wifi_rounded,
-                color: Color(0xFF0F766E),
-                size: 14,
+              right: -2,
+              top: -2,
+              child: Icon(
+                Icons.wifi,
+                color: const Color(0xFF0F766E).withOpacity(0.5),
+                size: 10,
               ),
-            ),
+            )
           ],
         ),
         const SizedBox(width: 8),
@@ -1741,3 +1741,52 @@ class _ProfileSectionTileState extends State<_ProfileSectionTile> {
     );
   }
 }
+
+class HeartEcgPainter extends CustomPainter {
+  final Color color;
+  HeartEcgPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintOutline = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final width = size.width;
+    final height = size.height;
+
+    final heartPath = Path();
+    heartPath.moveTo(width * 0.5, height * 0.85);
+    heartPath.cubicTo(width * 0.1, height * 0.55, width * 0.05, height * 0.25, width * 0.28, height * 0.15);
+    heartPath.cubicTo(width * 0.42, height * 0.1, width * 0.5, height * 0.26, width * 0.5, height * 0.26);
+    heartPath.cubicTo(width * 0.5, height * 0.26, width * 0.58, height * 0.1, width * 0.72, height * 0.15);
+    heartPath.cubicTo(width * 0.9, height * 0.25, width * 0.9, height * 0.55, width * 0.5, height * 0.85);
+    canvas.drawPath(heartPath, paintOutline);
+
+    final paintEcg = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final ecgPath = Path();
+    ecgPath.moveTo(width * 0.25, height * 0.45);
+    ecgPath.lineTo(width * 0.38, height * 0.45);
+    ecgPath.lineTo(width * 0.42, height * 0.52);
+    ecgPath.lineTo(width * 0.47, height * 0.30);
+    ecgPath.lineTo(width * 0.53, height * 0.60);
+    ecgPath.lineTo(width * 0.57, height * 0.45);
+    ecgPath.lineTo(width * 0.75, height * 0.45);
+    canvas.drawPath(ecgPath, paintEcg);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

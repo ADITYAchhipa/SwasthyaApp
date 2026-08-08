@@ -3,13 +3,19 @@ const router = express.Router();
 const Hospital = require('../models/Hospital');
 
 // ─── GET /api/hospitals ───────────────────────────────────────────────────────
-// Get all hospitals (optionally filter by city or specialty)
+// Get all hospitals (optionally filter by city, specialty, or search)
 router.get('/', async (req, res) => {
   try {
-    const { city, specialty } = req.query;
+    const { city, specialty, search } = req.query;
     const filter = {};
     if (city) filter.city = new RegExp(city, 'i');
     if (specialty) filter.specialties = specialty;
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, 'i') },
+        { address: new RegExp(search, 'i') },
+      ];
+    }
 
     const hospitals = await Hospital.find(filter, {
       authorizedPersonnel: 0, // Never expose personnel list publicly
@@ -17,7 +23,7 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, hospitals });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 });
 
@@ -31,7 +37,7 @@ router.get('/:hospitalId', async (req, res) => {
     if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
     res.json({ success: true, hospital });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 });
 

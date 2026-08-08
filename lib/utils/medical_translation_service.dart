@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/swasthya_tap_provider.dart';
+import 'translation_service.dart';
 
 class MedicalTranslationService {
   static const Map<String, Map<String, String>> _localizedValues = {
@@ -2922,6 +2923,41 @@ class MedicalTranslationService {
     },
   };
 
+  static String? lookupRaw(String lang, String key) {
+    final cleanVal = key.trim();
+    if (cleanVal.isEmpty) return null;
+    
+    String? result;
+    if (_localizedValues[lang]?.containsKey(cleanVal) ?? false) {
+      result = _localizedValues[lang]![cleanVal]!;
+    } else {
+      final lowerKey = cleanVal.toLowerCase();
+      if (_localizedValues[lang]?.containsKey(lowerKey) ?? false) {
+        result = _localizedValues[lang]![lowerKey]!;
+      } else {
+        for (final entry in (_localizedValues[lang] ?? {}).entries) {
+          if (entry.key.toLowerCase() == lowerKey) {
+            result = entry.value;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (result != null) {
+      if (cleanVal == 'hi_user') {
+        result = result.replaceAll('👋', '').trim();
+      }
+      return result;
+    }
+    
+    if (lang != 'English') {
+      return lookupRaw('English', key);
+    }
+    
+    return null;
+  }
+
   static String translate(BuildContext context, String value) {
     try {
       final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
@@ -2936,35 +2972,40 @@ class MedicalTranslationService {
     final cleanVal = value.trim();
     if (cleanVal.isEmpty) return '';
     
-    // Exact match check first
-    if (_localizedValues[lang]?.containsKey(cleanVal) ?? false) {
-      return _localizedValues[lang]![cleanVal]!;
-    }
+    final ownVal = lookupRaw(lang, cleanVal);
+    if (ownVal != null) return ownVal;
     
-    // Case-insensitive / lower case key check
-    final lowerKey = cleanVal.toLowerCase();
-    if (_localizedValues[lang]?.containsKey(lowerKey) ?? false) {
-      return _localizedValues[lang]![lowerKey]!;
-    }
+    final tsVal = TranslationService.lookupRaw(lang, cleanVal);
+    if (tsVal != null) return tsVal;
 
-    // Try finding key-insensitive match in other keys
-    for (final entry in (_localizedValues[lang] ?? {}).entries) {
-      if (entry.key.toLowerCase() == lowerKey) {
-        return entry.value;
-      }
-    }
-
-    // Fallback to Hindi if not English/Hindi
     if (lang != 'English' && lang != 'Hindi') {
       final hindiVal = _getCaseInsensitive(_localizedValues['Hindi'], cleanVal);
       if (hindiVal != null) return hindiVal;
     }
 
-    // Fallback to English
-    final englishVal = _getCaseInsensitive(_localizedValues['English'], cleanVal);
-    if (englishVal != null) return englishVal;
+    return formatUnderscores(cleanVal);
+  }
 
-    return cleanVal;
+  static String formatUnderscores(String text) {
+    var cleanText = text;
+    if (cleanText.endsWith('_label')) {
+      cleanText = cleanText.substring(0, cleanText.length - 6);
+    } else if (cleanText.endsWith('_filter')) {
+      cleanText = cleanText.substring(0, cleanText.length - 7);
+    }
+    
+    if (!cleanText.contains('_')) {
+      if (cleanText.isEmpty) return '';
+      return cleanText[0].toUpperCase() + cleanText.substring(1);
+    }
+    
+    final words = cleanText.split('_');
+    final formatted = words.map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
+    
+    return formatted;
   }
 
   static String? _getCaseInsensitive(Map<String, String>? map, String value) {

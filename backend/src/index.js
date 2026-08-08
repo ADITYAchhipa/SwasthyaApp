@@ -8,6 +8,8 @@ const citizenRoutes = require('./routes/citizens');
 const orderRoutes = require('./routes/orders');
 const bloodRequestRoutes = require('./routes/bloodRequests');
 const hospitalRoutes = require('./routes/hospitals');
+const phcRoutes = require('./routes/phcs');
+const bloodBankRoutes = require('./routes/bloodBanks');
 const healthRoutes = require('./routes/health');
 
 const app = express();
@@ -31,6 +33,8 @@ app.use('/api/citizens', citizenRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/blood-requests', bloodRequestRoutes);
 app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/phcs', phcRoutes);
+app.use('/api/blood-banks', bloodBankRoutes);
 app.use('/api/health-reports', healthRoutes);
 
 // ─── Database Connection Helper ────────────────────────────────────────────────

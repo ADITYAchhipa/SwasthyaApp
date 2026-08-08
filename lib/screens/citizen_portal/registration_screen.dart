@@ -542,7 +542,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
             if (_secondsRemaining == 0)
               TextButton(
-                onPressed: _startTimer,
+                onPressed: _sendOtp,
                 child: Text(
                   _t('resend_btn'),
                   style: const TextStyle(

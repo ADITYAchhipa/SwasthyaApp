@@ -10,11 +10,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../providers/swasthya_tap_provider.dart';
 import '../../utils/translation_service.dart';
 import '../../models/models.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/mock_sms_center.dart';
 import '../../services/api_service.dart';
 import 'edit_medical_profile.dart';
 import 'organ_donation_pledge.dart';
@@ -42,7 +44,9 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   int _currentIndex = 0;
   bool _flashOn = false;
   late AnimationController _scannerController;
-  late MobileScannerController _cameraController;
+  MobileScannerController? _cameraController;
+  bool _isCameraPermissionGranted = false;
+  bool _isCheckingCamera = false;
 
 
 
@@ -257,7 +261,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _cameraController = MobileScannerController();
     _scannerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -271,7 +274,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
 
   @override
   void dispose() {
-    _cameraController.dispose();
+    _cameraController?.dispose();
     _scannerController.dispose();
     if (_isProfileInitialized) {
       _fullNameController.dispose();
@@ -295,23 +298,65 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
     super.dispose();
   }
 
-  void _onTabSelected(int index) async {
-    if (index == 1) {
-      try {
-        await _cameraController.start();
-      } catch (e) {
-        debugPrint('Error starting camera: $e');
-      }
-    } else {
-      try {
-        await _cameraController.stop();
-      } catch (e) {
-        debugPrint('Error stopping camera: $e');
-      }
+  void _onTabSelected(int index) {
+    if (_currentIndex == index) return;
+
+    // Leaving scan tab -> dispose camera controller cleanly
+    if (_currentIndex == 1 && index != 1) {
+      _flashOn = false;
+      _cameraController?.dispose();
+      _cameraController = null;
+      _isCameraPermissionGranted = false;
     }
+
     setState(() {
       _currentIndex = index;
     });
+
+    if (index == 1) {
+      _initCamera();
+    }
+  }
+
+  Future<void> _initCamera() async {
+    setState(() {
+      _isCheckingCamera = true;
+    });
+
+    try {
+      var status = await Permission.camera.status;
+      if (!status.isGranted) {
+        status = await Permission.camera.request();
+      }
+
+      if (!mounted || _currentIndex != 1) return;
+
+      if (status.isGranted) {
+        _cameraController?.dispose();
+        _cameraController = MobileScannerController(
+          detectionSpeed: DetectionSpeed.noDuplicates,
+          facing: CameraFacing.back,
+          returnImage: false,
+        );
+        setState(() {
+          _isCameraPermissionGranted = true;
+          _isCheckingCamera = false;
+        });
+      } else {
+        setState(() {
+          _isCameraPermissionGranted = false;
+          _isCheckingCamera = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error starting camera: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraPermissionGranted = false;
+          _isCheckingCamera = false;
+        });
+      }
+    }
   }
 
   @override
@@ -444,7 +489,17 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
         Stack(
           children: [
             IconButton(
-              onPressed: () => _onTabSelected(3),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const FractionallySizedBox(
+                    heightFactor: 0.85,
+                    child: MockSmsCenter(),
+                  ),
+                );
+              },
               icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textPrimary, size: 26),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -452,21 +507,22 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                 padding: const EdgeInsets.all(10),
               ),
             ),
-            Positioned(
-              right: 6,
-              top: 6,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: AppTheme.accentRed,
-                  shape: BoxShape.circle,
-                ),
-                child: const Text(
-                  '3',
-                  style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+            if (provider.mockSmsInbox.where((s) => !s['replied']).isNotEmpty)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.accentRed,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${provider.mockSmsInbox.where((s) => !s['replied']).length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(width: 10),
@@ -1379,37 +1435,99 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       color: Colors.black, // Dark container background
       child: Stack(
         children: [
-          // 1. Live Camera Stream using mobile_scanner (only built when this tab is selected)
+          // 1. Live Camera Stream using mobile_scanner (only built when this tab is selected and controller ready)
           Positioned.fill(
             child: _currentIndex == 1
-                ? MobileScanner(
-                    controller: _cameraController,
-                    onDetect: (BarcodeCapture capture) {
-                      final List<Barcode> barcodes = capture.barcodes;
-                      if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                        final String rawValue = barcodes.first.rawValue!;
-                        _processScannedData(rawValue, provider);
-                      }
-                    },
-                    errorBuilder: (context, error) {
-                      // Return a dark background when no camera/webcam is active
-                      return Container(
-                        color: Colors.black87,
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 48),
-                            const SizedBox(height: 12),
-                            Text(
-                              TranslationService.t(context, 'no_camera'),
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
-                            ),
-                          ],
+                ? (_isCheckingCamera
+                    ? Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: CircularProgressIndicator(color: AppTheme.accentTeal),
                         ),
-                      );
-                    },
-                  )
+                      )
+                    : (_isCameraPermissionGranted && _cameraController != null)
+                        ? MobileScanner(
+                            controller: _cameraController!,
+                            onDetect: (BarcodeCapture capture) {
+                              final List<Barcode> barcodes = capture.barcodes;
+                              if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                                final String rawValue = barcodes.first.rawValue!;
+                                _processScannedData(rawValue, provider);
+                              }
+                            },
+                            errorBuilder: (context, error) {
+                              return Container(
+                                color: Colors.black87,
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 48),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      TranslationService.t(context, 'no_camera'),
+                                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      error.errorDetails?.message ?? error.toString(),
+                                      style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () => _initCamera(),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.accentTeal,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      child: const Text('Retry Camera', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.black,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.camera_alt_outlined, color: Colors.white54, size: 56),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Camera Permission Needed',
+                                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Camera access is required to scan SwasthyaTap QR codes.',
+                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    final status = await Permission.camera.request();
+                                    if (status.isGranted) {
+                                      _initCamera();
+                                    } else if (status.isPermanentlyDenied) {
+                                      openAppSettings();
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.accentTeal,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: const Text('Grant Camera Permission', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ))
                 : const SizedBox.shrink(),
           ),
           
@@ -1626,13 +1744,15 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                     // Toggle Flash
                     GestureDetector(
                       onTap: () async {
-                        setState(() {
-                          _flashOn = !_flashOn;
-                        });
-                        try {
-                          await _cameraController.toggleTorch();
-                        } catch (e) {
-                          debugPrint('Torch not supported: $e');
+                        if (_cameraController != null) {
+                          try {
+                            await _cameraController!.toggleTorch();
+                            setState(() {
+                              _flashOn = !_flashOn;
+                            });
+                          } catch (e) {
+                            debugPrint('Torch not supported: $e');
+                          }
                         }
                       },
                       child: Column(
@@ -1672,8 +1792,8 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                               );
                               await Future.delayed(const Duration(milliseconds: 800));
                               _processScannedData('x7k9m2', provider);
-                            } else {
-                              final BarcodeCapture? capture = await _cameraController.analyzeImage(image.path);
+                            } else if (_cameraController != null) {
+                              final BarcodeCapture? capture = await _cameraController!.analyzeImage(image.path);
                               if (capture != null && capture.barcodes.isNotEmpty) {
                                 final String? rawValue = capture.barcodes.first.rawValue;
                                 if (rawValue != null) {
@@ -1824,7 +1944,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
         if (isCardUrl) {
           // Stop camera scanning session before navigating
           try {
-            _cameraController.stop();
+            _cameraController?.stop();
           } catch (_) {}
 
           Navigator.push(
@@ -1835,7 +1955,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
           ).then((_) {
             // Restart camera scanning when coming back
             try {
-              _cameraController.start();
+              _cameraController?.start();
             } catch (_) {}
           });
           return;
@@ -2536,21 +2656,21 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
       children: [
         Stack(
           alignment: Alignment.center,
-          clipBehavior: Clip.none,
           children: [
             const Icon(
-              Icons.health_and_safety_rounded,
+              Icons.favorite_outline_rounded,
               color: Color(0xFF0F766E),
-              size: 26,
+              size: 24,
             ),
             Positioned(
-              top: -8,
-              child: const Icon(
-                Icons.wifi_rounded,
-                color: Color(0xFF0F766E),
-                size: 14,
+              right: -2,
+              top: -2,
+              child: Icon(
+                Icons.wifi,
+                color: const Color(0xFF0F766E).withOpacity(0.5),
+                size: 10,
               ),
-            ),
+            )
           ],
         ),
         const SizedBox(width: 8),

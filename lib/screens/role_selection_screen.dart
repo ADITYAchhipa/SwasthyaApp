@@ -92,7 +92,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
-                          const SizedBox(width: 8),
                           Stack(
                             alignment: Alignment.center,
                             children: [

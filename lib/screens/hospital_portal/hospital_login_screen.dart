@@ -274,24 +274,7 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-
-                    // Government of India Emblem (Custom vector)
-                    CustomPaint(
-                      size: const Size(60, 60),
-                      painter: IndiaEmblemPainter(),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Government of India',
-                      style: GoogleFonts.outfit(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        color: const Color(0xFF334155),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // SwasthyaTap Hospital Logo
                     Row(
@@ -548,7 +531,6 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
           style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF0F172A)),
           decoration: _buildInputDecoration(
             hintText: 'e.g. HOSP-004',
-            prefixIcon: Icons.domain_rounded,
             suffixIcon: Icons.badge_outlined,
           ),
         ),
@@ -790,13 +772,13 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
 
   InputDecoration _buildInputDecoration({
     required String hintText,
-    required IconData prefixIcon,
+    IconData? prefixIcon,
     IconData? suffixIcon,
   }) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
-      prefixIcon: Icon(prefixIcon, color: const Color(0xFF64748B), size: 18),
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: const Color(0xFF64748B), size: 18) : null,
       suffixIcon: suffixIcon != null ? Icon(suffixIcon, color: const Color(0xFF94A3B8), size: 18) : null,
       filled: true,
       fillColor: const Color(0xFFF8FAFC),

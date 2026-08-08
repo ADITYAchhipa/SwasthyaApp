@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/swasthya_tap_provider.dart';
+import 'medical_translation_service.dart';
 
 class TranslationService {
   static const Map<String, Map<String, String>> _localizedValues = {
@@ -4532,17 +4533,59 @@ class TranslationService {
     },
   };
 
+  static String? lookupRaw(String lang, String key) {
+    return _localizedValues[lang]?[key] ?? _localizedValues['English']?[key];
+  }
+
   static String t(BuildContext context, String key) {
     try {
       final provider = Provider.of<SwasthyaTapProvider>(context);
       final lang = provider.selectedLanguage;
-      return _localizedValues[lang]?[key] ?? _localizedValues['English']?[key] ?? key;
+      return tLang(lang, key);
     } catch (_) {
-      return _localizedValues['English']?[key] ?? key;
+      return tLang('English', key);
     }
   }
 
   static String tLang(String lang, String key) {
-    return _localizedValues[lang]?[key] ?? _localizedValues['English']?[key] ?? key;
+    var val = _localizedValues[lang]?[key] ?? _localizedValues['English']?[key];
+    if (val != null) {
+      if (key == 'hi_user') {
+        val = val.replaceAll('👋', '').trim();
+      }
+      return val;
+    }
+
+    val = MedicalTranslationService.lookupRaw(lang, key);
+    if (val != null) {
+      if (key == 'hi_user') {
+        val = val.replaceAll('👋', '').trim();
+      }
+      return val;
+    }
+
+    return _formatFallback(key);
+  }
+
+  static String _formatFallback(String key) {
+    var cleanKey = key;
+    if (cleanKey.endsWith('_label')) {
+      cleanKey = cleanKey.substring(0, cleanKey.length - 6);
+    } else if (cleanKey.endsWith('_filter')) {
+      cleanKey = cleanKey.substring(0, cleanKey.length - 7);
+    }
+    
+    if (!cleanKey.contains('_')) {
+      if (cleanKey.isEmpty) return '';
+      return cleanKey[0].toUpperCase() + cleanKey.substring(1);
+    }
+    
+    final words = cleanKey.split('_');
+    final formatted = words.map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
+    
+    return formatted;
   }
 }

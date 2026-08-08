@@ -69,9 +69,24 @@ class AppTheme {
     required String label,
     required IconData icon,
     String? hint,
+    bool isRequired = false,
   }) {
     return InputDecoration(
-      labelText: label,
+      label: isRequired
+          ? Text.rich(
+              TextSpan(
+                text: label,
+                style: const TextStyle(color: textSecondary, fontSize: 13),
+                children: const [
+                  TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: accentRed, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )
+          : null,
+      labelText: isRequired ? null : label,
       hintText: hint,
       hintStyle: const TextStyle(color: textSecondary, fontSize: 13),
       labelStyle: const TextStyle(color: textSecondary, fontSize: 13),
@@ -95,6 +110,7 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: accentRed, width: 1.5),
       ),
+      errorStyle: const TextStyle(color: accentRed, fontSize: 11),
     );
   }
 

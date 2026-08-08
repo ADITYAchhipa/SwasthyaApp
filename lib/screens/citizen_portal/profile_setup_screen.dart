@@ -6,6 +6,7 @@ import '../../widgets/glass_card.dart';
 import '../../models/models.dart';
 import '../../utils/translation_service.dart';
 import 'language_selection_screen.dart';
+import 'citizen_dashboard.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final MedicalProfile citizen;
@@ -87,7 +88,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _saveProfile(SwasthyaTapProvider provider) async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all required fields'),
+          backgroundColor: AppTheme.accentRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -132,7 +142,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
+          MaterialPageRoute(builder: (_) => const CitizenDashboard()),
         );
       }
     } catch (e) {
@@ -180,7 +190,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.favorite_rounded, color: AppTheme.accentTeal, size: 24),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(
+                          Icons.favorite_outline_rounded,
+                          color: AppTheme.accentTeal,
+                          size: 24,
+                        ),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Icon(
+                            Icons.wifi,
+                            color: AppTheme.accentTeal.withOpacity(0.5),
+                            size: 10,
+                          ),
+                        )
+                      ],
+                    ),
                     Column(
                       children: const [
                         Text(
@@ -272,6 +300,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'full_name'),
                                   icon: Icons.person,
+                                  isRequired: true,
                                 ),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty ? 'Full name required' : null,
@@ -289,6 +318,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       decoration: AppTheme.premiumInputDecoration(
                                         label: TranslationService.t(context, 'label_age'),
                                         icon: Icons.calendar_today,
+                                        isRequired: true,
                                       ),
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) return 'Age required';
@@ -306,6 +336,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                       decoration: AppTheme.premiumInputDecoration(
                                         label: TranslationService.t(context, 'blood_group'),
                                         icon: Icons.bloodtype,
+                                        isRequired: true,
                                       ),
                                       items: _bloodGroups.map((bg) {
                                         return DropdownMenuItem(value: bg, child: Text(bg));
@@ -331,6 +362,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'phone_number'),
                                   icon: Icons.phone_android,
+                                  isRequired: true,
                                 ),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty ? 'Mobile number required' : null,
@@ -345,6 +377,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_address'),
                                   icon: Icons.home,
+                                  isRequired: true,
                                 ),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty ? 'Address required' : null,
@@ -378,6 +411,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_emergency_name'),
                                   icon: Icons.contact_phone,
+                                  isRequired: true,
                                 ),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty ? 'Contact name required' : null,
@@ -392,6 +426,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                 decoration: AppTheme.premiumInputDecoration(
                                   label: TranslationService.t(context, 'label_emergency_phone'),
                                   icon: Icons.phone,
+                                  isRequired: true,
                                 ),
                                 validator: (value) =>
                                     value == null || value.trim().isEmpty ? 'Contact phone required' : null,
@@ -445,3 +480,52 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 }
+
+class HeartEcgPainter extends CustomPainter {
+  final Color color;
+  HeartEcgPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintOutline = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final width = size.width;
+    final height = size.height;
+
+    final heartPath = Path();
+    heartPath.moveTo(width * 0.5, height * 0.85);
+    heartPath.cubicTo(width * 0.1, height * 0.55, width * 0.05, height * 0.25, width * 0.28, height * 0.15);
+    heartPath.cubicTo(width * 0.42, height * 0.1, width * 0.5, height * 0.26, width * 0.5, height * 0.26);
+    heartPath.cubicTo(width * 0.5, height * 0.26, width * 0.58, height * 0.1, width * 0.72, height * 0.15);
+    heartPath.cubicTo(width * 0.9, height * 0.25, width * 0.9, height * 0.55, width * 0.5, height * 0.85);
+    canvas.drawPath(heartPath, paintOutline);
+
+    final paintEcg = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final ecgPath = Path();
+    ecgPath.moveTo(width * 0.25, height * 0.45);
+    ecgPath.lineTo(width * 0.38, height * 0.45);
+    ecgPath.lineTo(width * 0.42, height * 0.52);
+    ecgPath.lineTo(width * 0.47, height * 0.30);
+    ecgPath.lineTo(width * 0.53, height * 0.60);
+    ecgPath.lineTo(width * 0.57, height * 0.45);
+    ecgPath.lineTo(width * 0.75, height * 0.45);
+    canvas.drawPath(ecgPath, paintEcg);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

@@ -85,10 +85,28 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                             children: [
                               Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.favorite_rounded, color: AppTheme.accentTeal, size: 18),
-                                  SizedBox(width: 4),
-                                  Text(
+                                children: [
+                                  Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.favorite_outline_rounded,
+                                        color: AppTheme.accentTeal,
+                                        size: 18,
+                                      ),
+                                      Positioned(
+                                        right: -2,
+                                        top: -2,
+                                        child: Icon(
+                                          Icons.wifi,
+                                          color: AppTheme.accentTeal.withOpacity(0.5),
+                                          size: 8,
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
                                     'SwasthyaTap.in',
                                     style: TextStyle(
                                       color: AppTheme.textPrimary,
@@ -176,9 +194,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.15,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1.55,
                           ),
                           itemCount: _languages.length,
                           itemBuilder: (context, index) {
@@ -195,7 +213,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                 duration: const Duration(milliseconds: 200),
                                 decoration: BoxDecoration(
                                   color: isSelected ? AppTheme.accentTeal.withOpacity(0.05) : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isSelected ? AppTheme.accentTeal : AppTheme.borderColor,
                                     width: isSelected ? 1.5 : 1.0,
@@ -205,8 +223,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                       color: isSelected
                                           ? AppTheme.accentTeal.withOpacity(0.04)
                                           : Colors.black.withOpacity(0.01),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
@@ -215,15 +233,15 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                     // Checkmark for selected item
                                     if (isSelected)
                                       Positioned(
-                                        top: 8,
-                                        right: 8,
+                                        top: 5,
+                                        right: 5,
                                         child: Container(
                                           padding: const EdgeInsets.all(2),
                                           decoration: const BoxDecoration(
                                             color: AppTheme.accentTeal,
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.check, color: Colors.white, size: 10),
+                                          child: const Icon(Icons.check, color: Colors.white, size: 8),
                                         ),
                                       ),
                                     // Center content
@@ -236,15 +254,15 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                             style: TextStyle(
                                               color: isSelected ? AppTheme.accentTeal : AppTheme.textPrimary,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 14,
                                             ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 2),
                                           Text(
                                             lang['english']!,
                                             style: const TextStyle(
                                               color: AppTheme.textSecondary,
-                                              fontSize: 10.5,
+                                              fontSize: 9.5,
                                             ),
                                           ),
                                         ],
@@ -351,3 +369,52 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     );
   }
 }
+
+class HeartEcgPainter extends CustomPainter {
+  final Color color;
+  HeartEcgPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintOutline = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final width = size.width;
+    final height = size.height;
+
+    final heartPath = Path();
+    heartPath.moveTo(width * 0.5, height * 0.85);
+    heartPath.cubicTo(width * 0.1, height * 0.55, width * 0.05, height * 0.25, width * 0.28, height * 0.15);
+    heartPath.cubicTo(width * 0.42, height * 0.1, width * 0.5, height * 0.26, width * 0.5, height * 0.26);
+    heartPath.cubicTo(width * 0.5, height * 0.26, width * 0.58, height * 0.1, width * 0.72, height * 0.15);
+    heartPath.cubicTo(width * 0.9, height * 0.25, width * 0.9, height * 0.55, width * 0.5, height * 0.85);
+    canvas.drawPath(heartPath, paintOutline);
+
+    final paintEcg = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final ecgPath = Path();
+    ecgPath.moveTo(width * 0.25, height * 0.45);
+    ecgPath.lineTo(width * 0.38, height * 0.45);
+    ecgPath.lineTo(width * 0.42, height * 0.52);
+    ecgPath.lineTo(width * 0.47, height * 0.30);
+    ecgPath.lineTo(width * 0.53, height * 0.60);
+    ecgPath.lineTo(width * 0.57, height * 0.45);
+    ecgPath.lineTo(width * 0.75, height * 0.45);
+    canvas.drawPath(ecgPath, paintEcg);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

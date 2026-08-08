@@ -26,9 +26,15 @@ const HospitalSchema = new mongoose.Schema(
 
     // Registered phone for OTP during login
     registeredPhone: { type: String, required: true },
+    phone: { type: String, default: '+91 80 2699 5000' },
+    rating: { type: Number, default: 4.6 },
+    reviews: { type: Number, default: 1250 },
+    status: { type: String, default: 'Open Now' },
+    statusDetails: { type: String, default: '24x7 Emergency Services' },
 
     isVerified: { type: Boolean, default: true },
-    specialties: [String],
+    specialties: [{ type: String }],
+    badges: [{ type: String }],
     bedCount: { type: Number, default: 0 },
   },
   { timestamps: true }
