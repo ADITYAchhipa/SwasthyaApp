@@ -49,6 +49,15 @@ dependencies:
   flutter_map: ^8.1.1
   latlong2: ^0.9.1
   geolocator: ^13.0.2
+  # ── offline mesh ──
+  cryptography: ^2.7.0
+  cryptography_flutter: ^2.3.2
+  flutter_secure_storage: ^9.2.2
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  connectivity_plus: ^6.0.5
+  nearby_connections: ^4.2.0
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

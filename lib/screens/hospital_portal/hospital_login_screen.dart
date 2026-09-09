@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'hospital_dashboard.dart';
 import '../../services/api_service.dart';
+import '../../services/offline_mesh/offline_mesh_manager.dart';
 
 class HospitalLoginScreen extends StatefulWidget {
   const HospitalLoginScreen({Key? key}) : super(key: key);
@@ -159,6 +160,9 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
         final hId = hospitalData?['hospitalId'] as String? ?? _hospitalIdController.text.trim();
         final hName = hospitalData?['name'] as String? ?? 'Hospital';
         ApiService.setHospitalToken((result['token'] ?? '') as String, hId, hName);
+        
+        // Enroll device with offline mesh network
+        OfflineMeshManager.instance.registerDeviceIfNeeded();
 
         setState(() {
           _isVerifying = false;

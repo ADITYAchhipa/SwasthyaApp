@@ -5,7 +5,8 @@ import '../../../theme/app_theme.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final String reportName;
-  const PdfViewerScreen({Key? key, required this.reportName}) : super(key: key);
+  final String? reportUrl;
+  const PdfViewerScreen({Key? key, required this.reportName, this.reportUrl}) : super(key: key);
 
   @override
   State<PdfViewerScreen> createState() => _PdfViewerScreenState();
@@ -19,6 +20,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasRealUrl = widget.reportUrl != null && widget.reportUrl!.isNotEmpty &&
+        !widget.reportUrl!.contains('demo');
     return Scaffold(
       backgroundColor: const Color(0xFF1E293B), // Dark background for PDF previewer
       appBar: AppBar(
@@ -36,12 +39,26 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             Text(
-              'Page $_currentPage of $_totalPages',
+              hasRealUrl ? 'Tap to open full report' : 'Page $_currentPage of $_totalPages',
               style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[400]),
             ),
           ],
         ),
         actions: [
+          if (hasRealUrl)
+            IconButton(
+              icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white),
+              tooltip: 'Open in Browser',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Opening report in browser...'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          if (!hasRealUrl) ...[
           IconButton(
             icon: const Icon(Icons.zoom_in_rounded, color: Colors.white),
             onPressed: () {
@@ -58,6 +75,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               });
             },
           ),
+          ],
           const SizedBox(width: 8),
         ],
       ),

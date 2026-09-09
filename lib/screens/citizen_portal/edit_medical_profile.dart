@@ -215,8 +215,11 @@ class _EditMedicalProfileState extends State<EditMedicalProfile> {
                           _isDnr = val;
                         });
                       },
-                      activeColor: AppTheme.accentRed,
-                      activeTrackColor: AppTheme.accentRed.withOpacity(0.2),
+                      activeColor: Colors.white,
+                      activeTrackColor: AppTheme.accentRed,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: const Color(0xFFCBD5E1),
+                      trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],

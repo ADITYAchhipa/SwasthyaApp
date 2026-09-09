@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'onboarding_screen.dart';
+import '../services/offline_mesh/mesh_config.dart';
+import '../services/offline_mesh/offline_mesh_manager.dart';
 import 'citizen_portal/citizen_dashboard.dart';
 import 'hospital_portal/hospital_dashboard.dart';
 
@@ -35,8 +37,18 @@ class _SplashScreenState extends State<SplashScreen> {
       await ApiService.init();
       // Clear token so that the user does not bypass login screens
       ApiService.clearToken();
+
+      // If consent is enabled, start offline discovery / relay service
+      final consent = await MeshConfig.getConsent();
+      if (consent) {
+        for (final transport in OfflineMeshManager.instance.transports) {
+          if (await transport.isAvailable()) {
+            await transport.startDiscovery();
+          }
+        }
+      }
     } catch (e) {
-      debugPrint('Error clearing session: $e');
+      debugPrint('Error clearing session or starting mesh: $e');
     }
     if (mounted) {
       _goToOnboarding();

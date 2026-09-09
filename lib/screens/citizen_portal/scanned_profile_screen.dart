@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../utils/pdf_downloader.dart';
 import 'card_viewer_screen.dart'; // To reuse HeartEcgPainter
+import '../../services/medical_data_gateway.dart';
 
 class ScannedProfileScreen extends StatefulWidget {
   final String profileId;
@@ -30,7 +31,7 @@ class _ScannedProfileScreenState extends State<ScannedProfileScreen> {
     if (widget.preloadedProfile != null) {
       _profileFuture = Future.value(widget.preloadedProfile);
     } else {
-      _profileFuture = ApiService.getCitizen(widget.profileId);
+      _profileFuture = MedicalDataGateway.fetchCitizen(widget.profileId).then((res) => res.profile);
     }
   }
 

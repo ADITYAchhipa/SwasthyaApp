@@ -294,7 +294,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => PdfViewerScreen(reportName: report!.reportName),
+                        builder: (_) => PdfViewerScreen(
+                          reportName: report!.reportName,
+                          reportUrl: report.url,
+                        ),
                       ),
                     );
                   },
@@ -558,7 +561,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PdfViewerScreen(reportName: report.reportName),
+                  builder: (_) => PdfViewerScreen(
+                    reportName: report.reportName,
+                    reportUrl: report.url,
+                  ),
                 ),
               );
             },

@@ -1019,7 +1019,11 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
               Switch(
                 value: submitAnonymously,
                 onChanged: onToggleAnonymously,
-                activeColor: const Color(0xFF0D9488),
+                activeColor: Colors.white,
+                activeTrackColor: const Color(0xFF0D9488),
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: const Color(0xFFCBD5E1),
+                trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
               ),
             ],
           ),

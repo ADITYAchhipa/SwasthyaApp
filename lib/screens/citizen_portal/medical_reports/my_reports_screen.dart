@@ -24,6 +24,16 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
   String _searchQuery = '';
   Map<String, dynamic> _activeFilters = {};
 
+  @override
+  void initState() {
+    super.initState();
+    // Refresh reports from backend (MongoDB) so web-app-uploaded reports are shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<SwasthyaTapProvider>(context, listen: false);
+      provider.refreshCurrentCitizen();
+    });
+  }
+
   final List<String> _categories = [
     'All',
     'Blood Tests',

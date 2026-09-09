@@ -1000,7 +1000,11 @@ class _NfcWriterScreenState extends State<NfcWriterScreen>
                           Switch(
                             value: true,
                             onChanged: null, // Read-only for hospital
-                            activeColor: const Color(0xFF0F766E),
+                            activeColor: Colors.white,
+                            activeTrackColor: const Color(0xFF0F766E),
+                            inactiveThumbColor: Colors.white,
+                            inactiveTrackColor: const Color(0xFFCBD5E1),
+                            trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                           ),
                         ],
                       ),

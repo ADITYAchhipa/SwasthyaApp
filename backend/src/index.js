@@ -11,6 +11,7 @@ const hospitalRoutes = require('./routes/hospitals');
 const phcRoutes = require('./routes/phcs');
 const bloodBankRoutes = require('./routes/bloodBanks');
 const healthRoutes = require('./routes/health');
+const offlineMeshRoutes = require('./routes/offlineMesh');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,7 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/phcs', phcRoutes);
 app.use('/api/blood-banks', bloodBankRoutes);
 app.use('/api/health-reports', healthRoutes);
+app.use('/api/offline-mesh', offlineMeshRoutes);
 
 // ─── Database Connection Helper ────────────────────────────────────────────────
 let mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';

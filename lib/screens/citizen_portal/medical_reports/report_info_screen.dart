@@ -173,7 +173,11 @@ class _ReportInfoScreenState extends State<ReportInfoScreen> {
                     ),
                     trailing: Switch.adaptive(
                       value: report.isFavorite,
-                      activeColor: AppTheme.accentTeal,
+                      activeColor: Colors.white,
+                      activeTrackColor: AppTheme.accentTeal,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: const Color(0xFFCBD5E1),
+                      trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                       onChanged: (value) {
                         provider.toggleReportFavorite(widget.reportId);
                       },
@@ -194,7 +198,11 @@ class _ReportInfoScreenState extends State<ReportInfoScreen> {
                     ),
                     trailing: Switch.adaptive(
                       value: _reminderEnabled,
-                      activeColor: AppTheme.accentTeal,
+                      activeColor: Colors.white,
+                      activeTrackColor: AppTheme.accentTeal,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: const Color(0xFFCBD5E1),
+                      trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                       onChanged: (value) {
                         setState(() {
                           _reminderEnabled = value;

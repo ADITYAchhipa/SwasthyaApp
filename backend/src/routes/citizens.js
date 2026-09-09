@@ -74,6 +74,45 @@ function formatCitizen(c) {
   };
 }
 
+// ─── GET /api/citizens ────────────────────────────────────────────────────────
+// Search / List citizens (Supports ?q=... or ?search=... or ?bloodGroup=...)
+router.get('/', async (req, res) => {
+  try {
+    const { q, search, bloodGroup, limit = 50 } = req.query;
+    const query = q || search;
+    const filter = {};
+
+    if (query && query.trim() !== '') {
+      const trimmed = query.trim();
+      filter.$or = [
+        { profileId: new RegExp(trimmed, 'i') },
+        { fullName: new RegExp(trimmed, 'i') },
+        { phoneNumber: new RegExp(trimmed, 'i') },
+        { email: new RegExp(trimmed, 'i') },
+        { chronicConditions: new RegExp(trimmed, 'i') },
+        { allergies: new RegExp(trimmed, 'i') },
+      ];
+    }
+
+    if (bloodGroup && bloodGroup !== 'All') {
+      filter.bloodGroup = bloodGroup;
+    }
+
+    const citizens = await Citizen.find(filter)
+      .sort({ updatedAt: -1 })
+      .limit(parseInt(limit, 10) || 50);
+
+    res.json({
+      success: true,
+      count: citizens.length,
+      citizens: citizens.map(formatCitizen),
+    });
+  } catch (err) {
+    console.error('List citizens error:', err);
+    res.status(500).json({ success: false, message: 'Failed to search citizens', error: err.message });
+  }
+});
+
 // ─── GET /api/citizens/:id ────────────────────────────────────────────────────
 // Public read — used when a hospital NFC-scans a card
 router.get('/:id', async (req, res) => {
@@ -522,4 +561,5 @@ router.post('/:id/medical-reports', authenticate, upload.single('file'), async (
   }
 });
 
+router.formatCitizen = formatCitizen;
 module.exports = router;

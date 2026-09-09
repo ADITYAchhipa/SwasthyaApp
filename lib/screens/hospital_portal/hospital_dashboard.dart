@@ -14,6 +14,10 @@ import '../../services/api_service.dart';
 import '../onboarding_screen.dart';
 import '../../utils/translation_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/medical_data_gateway.dart';
+import '../../services/offline_mesh/offline_mesh_manager.dart';
+import '../../widgets/offline_relay_progress.dart';
+import '../settings/mesh_settings_tile.dart';
 
 class HospitalDashboard extends StatefulWidget {
   const HospitalDashboard({Key? key}) : super(key: key);
@@ -50,7 +54,21 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     });
 
     try {
-      final profile = await ApiService.getCitizen(slug);
+      final uiStateNotifier = ValueNotifier<MeshUiState>(MeshUiState.searching);
+      bool isSheetShown = false;
+
+      final result = await MedicalDataGateway.fetchCitizen(
+        slug,
+        onProgress: (state) {
+          uiStateNotifier.value = state;
+          if (!isSheetShown && state != MeshUiState.received && state != MeshUiState.failed) {
+            isSheetShown = true;
+            showMeshProgressSheet(context, uiStateNotifier);
+          }
+        },
+      );
+
+      final profile = result.profile;
       if (profile != null) {
         // Also update local cache in provider if present
         final idx = provider.profiles.indexWhere((p) => p.id == profile.id);
@@ -150,6 +168,30 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           },
         ),
         actions: [
+          // Mesh Settings button
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: AppTheme.accentTeal),
+            tooltip: 'Mesh Settings',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text("Mesh Settings"),
+                  content: const SizedBox(
+                    width: 300,
+                    child: MeshSettingsTile(),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("Close"),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // NFC Writer button
           IconButton(
             icon: const Icon(Icons.nfc_rounded, color: AppTheme.accentTeal),
@@ -894,26 +936,40 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                           });
 
                           try {
-                            // 1. Fetch from backend
-                            final profile = await ApiService.getCitizen(slug);
-                            if (profile != null) {
-                              // Cache in provider
-                              final idx = provider.profiles.indexWhere((p) => p.id == profile.id);
-                              if (idx != -1) {
-                                provider.profiles[idx] = profile;
-                              } else {
-                                provider.profiles.add(profile);
-                              }
+                             // 1. Fetch from backend
+                             final uiStateNotifier = ValueNotifier<MeshUiState>(MeshUiState.searching);
+                             bool isSheetShown = false;
 
-                              if (context.mounted) {
-                                Navigator.pop(context); // Close dialog
-                                _navigateToScreen(profile, isPrescription);
-                              }
-                              return;
-                            }
-                          } catch (e) {
-                            debugPrint('Error loading patient: $e');
-                          }
+                             final result = await MedicalDataGateway.fetchCitizen(
+                               slug,
+                               onProgress: (state) {
+                                 uiStateNotifier.value = state;
+                                 if (!isSheetShown && state != MeshUiState.received && state != MeshUiState.failed) {
+                                   isSheetShown = true;
+                                   showMeshProgressSheet(context, uiStateNotifier);
+                                 }
+                               },
+                             );
+
+                             final profile = result.profile;
+                             if (profile != null) {
+                               // Cache in provider
+                               final idx = provider.profiles.indexWhere((p) => p.id == profile.id);
+                               if (idx != -1) {
+                                 provider.profiles[idx] = profile;
+                               } else {
+                                 provider.profiles.add(profile);
+                               }
+
+                               if (context.mounted) {
+                                 Navigator.pop(context); // Close dialog
+                                 _navigateToScreen(profile, isPrescription);
+                               }
+                               return;
+                             }
+                           } catch (e) {
+                             debugPrint('Error loading patient: $e');
+                           }
 
                           // 2. Local Fallback
                           try {

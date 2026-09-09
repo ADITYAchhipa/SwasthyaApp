@@ -151,11 +151,16 @@ class AppTheme {
       dividerTheme: const DividerThemeData(color: borderColor, thickness: 1),
       switchTheme: SwitchThemeData(
         thumbColor: MaterialStateProperty.resolveWith(
-          (s) => s.contains(MaterialState.selected) ? cardBg : Colors.grey[400],
+          (s) => Colors.white,
         ),
         trackColor: MaterialStateProperty.resolveWith(
-          (s) => s.contains(MaterialState.selected) ? accentTeal : Colors.grey[300],
+          (s) => s.contains(MaterialState.selected) ? accentTeal : const Color(0xFFCBD5E1),
         ),
+        trackOutlineColor: MaterialStateProperty.resolveWith(
+          (s) => Colors.transparent,
+        ),
+        trackOutlineWidth: MaterialStateProperty.all(0.0),
+        overlayColor: MaterialStateProperty.all(accentTeal.withOpacity(0.12)),
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: accentTeal,

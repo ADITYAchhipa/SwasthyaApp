@@ -870,13 +870,80 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
 
   Widget _buildQuickActions(BuildContext context, SwasthyaTapProvider provider) {
     final actions = [
-      {'icon': Icons.phone_android_rounded, 'label': _t('tap_nfc', provider.selectedLanguage), 'color': const Color(0xFF0F766E)},
-      {'icon': Icons.qr_code_rounded, 'label': _t('generate_qr', provider.selectedLanguage), 'color': const Color(0xFFF59E0B)},
-      {'icon': Icons.assignment_rounded, 'label': 'My Reports', 'color': AppTheme.accentTeal},
-      {'icon': Icons.description_rounded, 'label': 'Prescriptions', 'color': const Color(0xFF0F8B8D)},
-      {'icon': Icons.bloodtype_outlined, 'label': _t('blood_network', provider.selectedLanguage), 'color': const Color(0xFFDC2626)},
-      {'icon': Icons.local_hospital_outlined, 'label': _t('nearby_centers', provider.selectedLanguage), 'color': const Color(0xFF1E40AF)},
-      {'icon': Icons.notifications_active_outlined, 'label': _t('emergency_alert', provider.selectedLanguage), 'color': const Color(0xFFF97316)},
+      {
+        'id': 'nfc',
+        'icon': Icons.phone_android_rounded,
+        'label': _t('tap_nfc', provider.selectedLanguage),
+        'color': const Color(0xFF0F766E),
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NfcCardReaderScreen()),
+        ),
+      },
+      {
+        'id': 'qr',
+        'icon': Icons.qr_code_rounded,
+        'label': _t('generate_qr', provider.selectedLanguage),
+        'color': const Color(0xFFF59E0B),
+        'onTap': () => _showGenerateQrDialog(context, provider.currentCitizen),
+      },
+      {
+        'id': 'reports',
+        'icon': Icons.assignment_rounded,
+        'label': 'My Reports',
+        'color': AppTheme.accentTeal,
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MyReportsScreen(
+              onTabSelected: (idx) {
+                setState(() {
+                  _currentIndex = idx;
+                });
+              },
+            ),
+          ),
+        ),
+      },
+      {
+        'id': 'prescriptions',
+        'icon': Icons.description_rounded,
+        'label': 'Prescriptions',
+        'color': const Color(0xFF0F8B8D),
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PrescriptionsDashboardScreen(
+              onTabSelected: (idx) {
+                setState(() {
+                  _currentIndex = idx;
+                });
+              },
+            ),
+          ),
+        ),
+      },
+      {
+        'id': 'nearby',
+        'icon': Icons.local_hospital_outlined,
+        'label': _t('nearby_centers', provider.selectedLanguage),
+        'color': const Color(0xFF1E40AF),
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const NearbyHealthCentersScreen(
+              initialFilter: 'Hospitals',
+            ),
+          ),
+        ),
+      },
+      {
+        'id': 'emergency',
+        'icon': Icons.notifications_active_outlined,
+        'label': _t('emergency_alert', provider.selectedLanguage),
+        'color': const Color(0xFFF97316),
+        'onTap': () => _showEmergencyAlerts(context, provider),
+      },
     ];
 
     return Column(
@@ -897,62 +964,8 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
               final action = actions[index];
               return GestureDetector(
                 onTap: () {
-                  if (index == 0) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NfcCardReaderScreen(),
-                      ),
-                    );
-                  } else if (index == 1) {
-                    _showGenerateQrDialog(context, provider.currentCitizen);
-                  } else if (index == 2) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MyReportsScreen(
-                          onTabSelected: (idx) {
-                            setState(() {
-                              _currentIndex = idx;
-                            });
-                          },
-                        ),
-                      ),
-                    );
-                  } else if (index == 3) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PrescriptionsDashboardScreen(
-                          onTabSelected: (idx) {
-                            setState(() {
-                              _currentIndex = idx;
-                            });
-                          },
-                        ),
-                      ),
-                    );
-                  } else if (index == 4) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NearbyHealthCentersScreen(
-                          initialFilter: 'Blood Banks',
-                        ),
-                      ),
-                    );
-                  } else if (index == 5) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NearbyHealthCentersScreen(
-                          initialFilter: 'Hospitals',
-                        ),
-                      ),
-                    );
-                  } else if (index == 6) {
-                    _showEmergencyAlerts(context, provider);
-                  }
+                  final onTap = action['onTap'] as VoidCallback?;
+                  onTap?.call();
                 },
                 child: Container(
                   width: 78,
@@ -2622,7 +2635,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                                       const SnackBar(content: Text('Bypass PIN option updated locally.')),
                                     );
                                   },
-                                  activeColor: const Color(0xFF0F766E),
+                                  activeColor: Colors.white,
+                                  activeTrackColor: AppTheme.accentTeal,
+                                  inactiveThumbColor: Colors.white,
+                                  inactiveTrackColor: const Color(0xFFCBD5E1),
+                                  trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                                 ),
                               ],
                             ),
@@ -3289,12 +3306,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                 _showLanguageSwitcher(context, provider);
               },
             ),
-            _buildSettingsItem(
-              Icons.notifications_none_rounded,
-              TranslationService.t(context, 'emergency_alerts_setting'),
-              provider.emergencyAlertsEnabled ? TranslationService.t(context, 'enabled') : 'Disabled',
-              onTap: () => _showEmergencyAlerts(context, provider),
-            ),
           ]),
           const SizedBox(height: 20),
 
@@ -3329,12 +3340,6 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   ),
                 );
               },
-            ),
-            _buildSettingsItem(
-              Icons.people_outline_rounded,
-              TranslationService.t(context, 'family_profiles'),
-              provider.familyCount == 0 ? 'No family members' : '${provider.familyCount} members added',
-              onTap: () => _showFamilyProfiles(context, provider),
             ),
           ]),
           const SizedBox(height: 20),
@@ -3488,7 +3493,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   
                   // Biometric Toggle
                   SwitchListTile.adaptive(
-                    activeColor: AppTheme.accentTeal,
+                    activeColor: Colors.white,
+                    activeTrackColor: AppTheme.accentTeal,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFCBD5E1),
+                    trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                     title: const Text('Biometric Authentication', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text('Require fingerprint/face lock to view health profile', style: TextStyle(fontSize: 11)),
                     value: provider.isBiometricLockEnabled,
@@ -3501,7 +3510,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   
                   // PIN Protected Toggle
                   SwitchListTile.adaptive(
-                    activeColor: AppTheme.accentTeal,
+                    activeColor: Colors.white,
+                    activeTrackColor: AppTheme.accentTeal,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFCBD5E1),
+                    trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                     title: const Text('4-Digit PIN Security', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text('Protect card updates and downloads with PIN', style: TextStyle(fontSize: 11)),
                     value: provider.isPinProtected,
@@ -3653,7 +3666,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   ),
                   const SizedBox(height: 24),
                   SwitchListTile.adaptive(
-                    activeColor: AppTheme.accentTeal,
+                    activeColor: Colors.white,
+                    activeTrackColor: AppTheme.accentTeal,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFCBD5E1),
+                    trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                     title: const Text('Emergency SMS Alerts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text('Receive notifications when first responders access your profile', style: TextStyle(fontSize: 11)),
                     value: provider.emergencyAlertsEnabled,
@@ -3664,7 +3681,11 @@ class _CitizenDashboardState extends State<CitizenDashboard> with SingleTickerPr
                   ),
                   const Divider(),
                   SwitchListTile.adaptive(
-                    activeColor: AppTheme.accentTeal,
+                    activeColor: Colors.white,
+                    activeTrackColor: AppTheme.accentTeal,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFCBD5E1),
+                    trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                     title: const Text('Blood Donation Broadcasts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text('Get notified of critical blood requests near your area', style: TextStyle(fontSize: 11)),
                     value: provider.bloodAlertsEnabled,

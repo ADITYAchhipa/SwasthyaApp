@@ -1058,4 +1058,123 @@ class ApiService {
     }
     return [];
   }
+
+  /// Fetch a citizen's full profile by profile ID with no mock fallback.
+  static Future<MedicalProfile?> getCitizenOnlineOnly(String profileId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/citizens/$profileId'), headers: _headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return _parseCitizen(body['citizen'] as Map<String, dynamic>);
+      }
+      debugPrint('getCitizenOnlineOnly non-200 status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('getCitizenOnlineOnly error: $e');
+      return null;
+    }
+  }
+
+  /// Register/enroll a device for offline mesh relay.
+  static Future<Map<String, dynamic>?> registerMeshDevice(Map<String, dynamic> body) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/offline-mesh/register-device'),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('registerMeshDevice failed status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('registerMeshDevice error: $e');
+      return null;
+    }
+  }
+
+  /// Submit a mesh packet to the server gateway.
+  static Future<Map<String, dynamic>?> submitMeshPacket(Map<String, dynamic> packetJson) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/offline-mesh/request'),
+            headers: _headers,
+            body: jsonEncode(packetJson),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('submitMeshPacket failed status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('submitMeshPacket error: $e');
+      return null;
+    }
+  }
+
+  /// Poll for a mesh response if the gateway lost the response mid-flight.
+  static Future<Map<String, dynamic>?> pollMeshResponse(String requestId) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/offline-mesh/response/$requestId'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('pollMeshResponse failed status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('pollMeshResponse error: $e');
+      return null;
+    }
+  }
+
+  /// Acknowledge that a mesh response was received.
+  static Future<bool> ackMeshResponse(String requestId) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/offline-mesh/response-ack'),
+            headers: _headers,
+            body: jsonEncode({'requestId': requestId}),
+          )
+          .timeout(const Duration(seconds: 8));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ackMeshResponse error: $e');
+      return false;
+    }
+  }
+
+  /// Fetch remote mesh config parameters.
+  static Future<Map<String, dynamic>?> getMeshConfig() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/offline-mesh/config'))
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('getMeshConfig error: $e');
+      return null;
+    }
+  }
 }

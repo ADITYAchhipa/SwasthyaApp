@@ -2,13 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'providers/swasthya_tap_provider.dart';
+import 'providers/offline_mesh_provider.dart';
+import 'services/offline_mesh/offline_mesh_manager.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Bootstrap Offline Mesh
+  final meshManager = OfflineMeshManager.instance;
+  await meshManager.bootstrap();
+
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => SwasthyaTapProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SwasthyaTapProvider()),
+        ChangeNotifierProvider(create: (_) => OfflineMeshProvider()..init()),
+      ],
       child: const SwasthyaTapApp(),
     ),
   );

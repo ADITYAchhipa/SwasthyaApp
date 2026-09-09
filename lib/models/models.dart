@@ -322,6 +322,8 @@ class HealthReport {
   final String fileSize; // e.g. '245 KB'
   final String referenceId;
   final String version;
+  // URL of the actual report file (Cloudinary/CDN link) — used for viewing & downloading
+  final String? url;
 
   HealthReport({
     required this.id,
@@ -341,6 +343,7 @@ class HealthReport {
     required this.fileSize,
     required this.referenceId,
     this.version = '1.0.0',
+    this.url,
   });
 
   HealthReport copyWith({
@@ -360,6 +363,7 @@ class HealthReport {
     String? fileSize,
     String? referenceId,
     String? version,
+    String? url,
   }) {
     return HealthReport(
       id: id,
@@ -379,6 +383,7 @@ class HealthReport {
       fileSize: fileSize ?? this.fileSize,
       referenceId: referenceId ?? this.referenceId,
       version: version ?? this.version,
+      url: url ?? this.url,
     );
   }
 }

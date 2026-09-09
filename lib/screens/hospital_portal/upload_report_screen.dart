@@ -489,7 +489,11 @@ class _UploadReportScreenState extends State<UploadReportScreen> {
               ),
               Switch.adaptive(
                 value: _isAbnormal,
-                activeColor: const Color(0xFFF43F5E),
+                activeColor: Colors.white,
+                activeTrackColor: const Color(0xFFF43F5E),
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: const Color(0xFFCBD5E1),
+                trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                 onChanged: (val) => setState(() => _isAbnormal = val),
               ),
             ],

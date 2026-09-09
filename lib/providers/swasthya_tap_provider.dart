@@ -1128,12 +1128,13 @@ class SwasthyaTapProvider extends ChangeNotifier {
       category: category,
       uploadedBy: json['uploadedBy'] as String? ?? json['issuer_key'] as String? ?? 'Lab',
       fileType: fileType,
-      notes: json['notes'] as String? ?? json['status_key'] as String? ?? 'Verified Digital Record',
+      notes: json['notes'] as String? ?? json['doctorRemarks'] as String? ?? json['status_key'] as String? ?? 'Verified Digital Record',
       isAbnormal: json['isAbnormal'] is bool ? json['isAbnormal'] as bool : (json['isAbnormal'] == 'true'),
       isFavorite: json['isFavorite'] is bool ? json['isFavorite'] as bool : (json['isFavorite'] == 'true'),
       fileSize: json['fileSize'] as String? ?? '1.2 MB',
       referenceId: json['referenceId'] as String? ?? json['_id'] as String? ?? 'REF-UNKNOWN',
       version: json['version'] as String? ?? '1.0.0',
+      url: json['url'] as String? ?? json['fileUrl'] as String?,
     );
   }
 
@@ -1141,8 +1142,8 @@ class SwasthyaTapProvider extends ChangeNotifier {
     try {
       final citizen = currentCitizen;
       
-      // Sync prescriptions
-      if (_currentCitizenProfileId != 'x7k9m2' || citizen.prescriptions.isNotEmpty) {
+      // Sync prescriptions — always rebuild from profile data when available
+      if (citizen.prescriptions.isNotEmpty || _currentCitizenProfileId != 'x7k9m2') {
         _prescriptions.clear();
         for (var p in citizen.prescriptions) {
           if (p is Map<String, dynamic>) {
@@ -1153,8 +1154,8 @@ class SwasthyaTapProvider extends ChangeNotifier {
         }
       }
       
-      // Sync health reports
-      if (_currentCitizenProfileId != 'x7k9m2' || citizen.medicalReports.isNotEmpty) {
+      // Sync health reports — always rebuild from MongoDB data (includes web-app-uploaded reports)
+      if (citizen.medicalReports.isNotEmpty) {
         _healthReports.clear();
         for (var r in citizen.medicalReports) {
           if (r is Map<String, dynamic>) {
@@ -1163,7 +1164,11 @@ class SwasthyaTapProvider extends ChangeNotifier {
             _healthReports.add(r);
           }
         }
+      } else if (_currentCitizenProfileId != 'x7k9m2') {
+        // Non-demo citizen with no reports yet — clear the seeded data
+        _healthReports.clear();
       }
+      // Note: for demo profile 'x7k9m2' with no reports in DB, keep the seeded data for demo purposes
     } catch (e) {
       debugPrint('Error syncing profiles data: $e');
     }

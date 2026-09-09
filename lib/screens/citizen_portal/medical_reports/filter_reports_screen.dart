@@ -415,7 +415,11 @@ class _FilterReportsScreenState extends State<FilterReportsScreen> {
                         ),
                         Switch.adaptive(
                           value: _showAbnormalOnly,
-                          activeColor: AppTheme.accentTeal,
+                          activeColor: Colors.white,
+                          activeTrackColor: AppTheme.accentTeal,
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: const Color(0xFFCBD5E1),
+                          trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
                           onChanged: (value) {
                             setState(() {
                               _showAbnormalOnly = value;
