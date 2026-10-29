@@ -14,6 +14,9 @@ import 'package:provider/provider.dart';
 import '../../providers/swasthya_tap_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/geolocation/geolocation_service.dart';
+import '../../services/medical_data_gateway.dart';
+import '../../services/offline_map_cache_service.dart';
+import '../../services/offline_mesh/network_manager.dart';
 import '../../theme/app_theme.dart';
 
 class HealthCenter {
@@ -217,7 +220,7 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
             statusDetails: (h['statusDetails'] ?? '24x7 Emergency Services').toString(),
             badges: badgesList.isNotEmpty ? badgesList : ['Emergency', 'ICU', 'NFC Cards'],
             latLng: latLng,
-            phone: (h['phone'] ?? h['registeredPhone'] ?? '+91 80 2699 5000').toString(),
+            phone: (h['phone'] ?? '+91 80 2699 5000').toString(),
           ),
         );
       }
@@ -953,6 +956,7 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
         _routePoints = [_userLocation, center.latLng];
         _isLoadingRoute = false;
         _routeDistanceText = center.formatDistance(_userLocation);
+        _routeDurationText = 'Direct Heading (Offline)';
       });
       _mapController.move(center.latLng, 15.0);
     }
@@ -1324,6 +1328,7 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.swasthyatap.app',
+              tileProvider: OfflineMapTileProvider(),
             ),
 
             // Real turn-by-turn road route polyline
@@ -1671,10 +1676,138 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
                   }
                 },
               ),
+              const SizedBox(height: 6),
+              // Offline Map Cache Button
+              _buildMapButton(
+                icon: Icons.offline_pin_rounded,
+                tooltip: 'Offline Map Cache',
+                color: const Color(0xFF0284C7),
+                onTap: _showOfflineMapDialog,
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _showOfflineMapDialog() async {
+    final count = await OfflineMapCacheManager.getCachedTilesCount();
+    final sizeBytes = await OfflineMapCacheManager.getCacheSizeBytes();
+    final sizeMb = (sizeBytes / (1024 * 1024)).toStringAsFixed(1);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isDownloading = false;
+        int currentProgress = 0;
+        int totalProgress = 0;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: const [
+                  Icon(Icons.offline_pin_rounded, color: Color(0xFF0284C7)),
+                  SizedBox(width: 8),
+                  Text('Offline Map Storage', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Map tiles are automatically saved as you view them so you can navigate and locate hospitals when offline.',
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Saved Tiles:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('$count tiles (~$sizeMb MB)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0284C7))),
+                      ],
+                    ),
+                  ),
+                  if (isDownloading) ...[
+                    const SizedBox(height: 16),
+                    LinearProgressIndicator(
+                      value: totalProgress > 0 ? currentProgress / totalProgress : null,
+                      color: const Color(0xFF0284C7),
+                      backgroundColor: const Color(0xFFE2E8F0),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Text(
+                        'Downloading emergency map... $currentProgress / $totalProgress tiles',
+                        style: const TextStyle(fontSize: 11, color: Colors.black54),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                if (!isDownloading && count > 0)
+                  TextButton(
+                    onPressed: () async {
+                      await OfflineMapCacheManager.clearCache();
+                      if (context.mounted) Navigator.pop(context);
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(content: Text('Offline map cache cleared')),
+                      );
+                    },
+                    child: const Text('Clear Cache', style: TextStyle(color: Colors.red)),
+                  ),
+                if (!isDownloading)
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0284C7),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: const Text('Pre-download Area (4km)'),
+                    onPressed: () async {
+                      setDialogState(() {
+                        isDownloading = true;
+                        currentProgress = 0;
+                        totalProgress = 0;
+                      });
+
+                      final downloaded = await OfflineMapCacheManager.precacheArea(
+                        _userLocation,
+                        minZoom: 13,
+                        maxZoom: 15,
+                        radiusKm: 4.0,
+                        onProgress: (cur, tot) {
+                          setDialogState(() {
+                            currentProgress = cur;
+                            totalProgress = tot;
+                          });
+                        },
+                      );
+
+                      if (context.mounted) Navigator.pop(context);
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(content: Text('Successfully downloaded $downloaded tiles for offline emergency use!')),
+                      );
+                    },
+                  ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1790,6 +1923,36 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
                       ],
                     ),
                   ),
+
+                  if (center.category == 'Hospital') ...[
+                    GestureDetector(
+                      onTap: () => _showHospitalDetailsSheet(center),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.info_outline_rounded, color: Color(0xFF16A34A), size: 18),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Details',
+                              style: GoogleFonts.inter(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF16A34A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
                   // Directions Action Button
                   GestureDetector(
@@ -1962,6 +2125,15 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
     return btn;
   }
 
+  void _showHospitalDetailsSheet(HealthCenter center) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _HospitalDetailModal(hospitalId: center.id, fallbackCenter: center),
+    );
+  }
+
   Widget _buildCategoryChip(String label, IconData icon, Color color) {
     final isSelected = _selectedCategory == label;
     return GestureDetector(
@@ -2004,6 +2176,275 @@ class _NearbyHealthCentersScreenState extends State<NearbyHealthCentersScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HospitalDetailModal extends StatefulWidget {
+  final String hospitalId;
+  final HealthCenter fallbackCenter;
+
+  const _HospitalDetailModal({
+    Key? key,
+    required this.hospitalId,
+    required this.fallbackCenter,
+  }) : super(key: key);
+
+  @override
+  State<_HospitalDetailModal> createState() => _HospitalDetailModalState();
+}
+
+class _HospitalDetailModalState extends State<_HospitalDetailModal> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _data;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetails();
+  }
+
+  Future<void> _fetchDetails() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await MedicalDataGateway.fetchHospital(widget.hospitalId);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _data = res;
+          if (res == null || res['ok'] != true) {
+            _errorMessage = 'Hospital directory information is unavailable offline.';
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load hospital directory data.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.local_hospital_rounded, color: Color(0xFF1E40AF), size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hospital Directory Information',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      widget.fallbackCenter.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: Column(
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Retrieving hospital directory data...',
+                      style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_errorMessage != null || _data == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 40, color: Color(0xFF94A3B8)),
+                  const SizedBox(height: 8),
+                  Text(
+                    _errorMessage ?? 'Information unavailable.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _fetchDetails,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            _buildProvenanceBanner(_data!),
+            const SizedBox(height: 14),
+            _buildHospitalContent(_data!['hospital'] as Map<String, dynamic>? ?? {}),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProvenanceBanner(Map<String, dynamic> data) {
+    final source = data['source'] as String? ?? 'online';
+    final isMesh = source == 'mesh';
+    final snapshotAt = data['snapshotAt']?.toString() ?? 'N/A';
+    final deliveredAt = data['deliveredAt']?.toString() ?? 'N/A';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isMesh ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isMesh ? const Color(0xFFBBF7D0) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isMesh ? Icons.cell_tower_rounded : Icons.cloud_done_rounded,
+            size: 20,
+            color: isMesh ? const Color(0xFF15803D) : const Color(0xFF0F766E),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isMesh ? 'Verified Offline Mesh Snapshot' : 'Live Online Directory Data',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isMesh ? const Color(0xFF15803D) : const Color(0xFF0F766E),
+                  ),
+                ),
+                if (isMesh) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Snapshot: $snapshotAt\nDelivered: $deliveredAt',
+                    style: GoogleFonts.inter(fontSize: 10.5, color: const Color(0xFF475569)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Note: This is a point-in-time snapshot. Real-world status may change.',
+                    style: GoogleFonts.inter(fontSize: 10, fontStyle: FontStyle.italic, color: const Color(0xFF64748B)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHospitalContent(Map<String, dynamic> hospital) {
+    final name = hospital['name']?.toString() ?? widget.fallbackCenter.name;
+    final address = hospital['address']?.toString() ?? widget.fallbackCenter.address;
+    final phone = hospital['phone']?.toString() ?? widget.fallbackCenter.phone;
+    final status = hospital['status']?.toString() ?? widget.fallbackCenter.status;
+    final bedCount = hospital['bedCount']?.toString() ?? '0';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          name,
+          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          address,
+          style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF2563EB)),
+            const SizedBox(width: 4),
+            Text(
+              phone,
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB)),
+            ),
+            const SizedBox(width: 14),
+            const Icon(Icons.king_bed_outlined, size: 14, color: Color(0xFF0F766E)),
+            const SizedBox(width: 4),
+            Text(
+              'Beds: $bedCount',
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0F766E)),
+            ),
+            const SizedBox(width: 14),
+            Text(
+              status,
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF15803D)),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

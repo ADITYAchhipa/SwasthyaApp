@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "protocolVersion": 2,
+    "generatedAt": "2026-10-24T15:30:00Z",
+    "description": "Offline Mesh v2 Cross-Language Cryptographic Golden Vectors"
+  },
+  "keys": {
+    "server": {
+      "secretBase64": "by4sxUhzzdTfLvFzJ4I5qrvO3c8InzMbhK5Dhi9MLQU=",
+      "x25519PrivatePkcs8Base64": "MC4CAQAwBQYDK2VuBCIEIOBjfC/qGh63EPx2FHizgINtGS/1jgry7eFcNCKO3rlK",
+      "x25519PublicKeyBase64": "9idVt+uVm6gFeQKj8MGwgZhOabiI9gsY0aJlLtQ7tmw=",
+      "ed25519PrivatePkcs8Base64": "MC4CAQAwBQYDK2VwBCIEIA7PrPE7RO77QBmnmK/blej3I9X2JJpx/hSat421wspE",
+      "ed25519PublicKeyBase64": "CifpXVlm71IM2LzD6vPr6puAJl6UhCsMb0Yd8BISVE4="
+    },
+    "client": {
+      "ed25519SeedHex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "x25519SeedHex": "0202020202020202020202020202020202020202020202020202020202020202",
+      "signingPublicKeyBase64": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+      "agreementPublicKeyBase64": "zo060cy2M+x7cMF4FKXHbs0CloUFDTRHRboFhw5YfVk=",
+      "deviceId": "NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK",
+      "destinationToken": "vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA"
+    }
+  },
+  "canonicalization": {
+    "requestHeader": {
+      "v": 2,
+      "t": "MEDICAL_DATA_REQUEST",
+      "op": "READ_HOSPITAL",
+      "rid": "550e8400-e29b-41d4-a716-446655440000",
+      "org": "NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK",
+      "dst": "vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA",
+      "iat": 1700000000,
+      "exp": 1700000120,
+      "ttl": 5
+    },
+    "expectedCanonicalString": "{\"dst\":\"vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA\",\"epk\":\"test_epk_sample_value_base64url_string_43c\",\"exp\":1700000120,\"iat\":1700000000,\"op\":\"READ_HOSPITAL\",\"org\":\"NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK\",\"pay\":\"test_pay_sample_value_base64url_string_60c\",\"rid\":\"550e8400-e29b-41d4-a716-446655440000\",\"t\":\"MEDICAL_DATA_REQUEST\",\"v\":2}",
+    "expectedAadString": "{\"dst\":\"vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA\",\"exp\":1700000120,\"iat\":1700000000,\"op\":\"READ_HOSPITAL\",\"org\":\"NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK\",\"rid\":\"550e8400-e29b-41d4-a716-446655440000\",\"t\":\"MEDICAL_DATA_REQUEST\",\"v\":2}"
+  },
+  "requestVector": {
+    "plaintextPayload": {
+      "op": "READ_HOSPITAL",
+      "ref": "HOSP_GOLDEN_1",
+      "token": "origin_jwt_token_sample_string_for_testing_123"
+    },
+    "packet": {
+      "v": 2,
+      "t": "MEDICAL_DATA_REQUEST",
+      "op": "READ_HOSPITAL",
+      "rid": "550e8400-e29b-41d4-a716-446655440000",
+      "org": "NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK",
+      "dst": "vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA",
+      "iat": 1700000000,
+      "exp": 1700000120,
+      "ttl": 5,
+      "epk": "Xf7dO2vUf2-ijuFdlp1bsOpTd01Ii9r53xxuASSz7yI",
+      "pay": "AQIDBAUGBwgJCgsM5MUEcqPpdfipXHrZriPq10u_uuHTL_Owamkt75UviXOAO2-c5sX4JCXJRrB9V_ThQVgJjcAMZFf7G-oJcy1Tpyxj7s3xHTVzgBj_QS-7-DQhptZS6m-rJpOFaOHb9FpxMVrLDTgv1WYYopIKQKPKV1LyL_yf",
+      "sig": "WkheJ-IPWDvIP8gtfbSMXRFcvaLbIJ_vQ9A0DZQRNs9EULYdBcsx2lf4z9-EXFjTV6ryDhQR7QOs1ygyLvA2Dw"
+    }
+  },
+  "responseVector": {
+    "plaintextPayload": {
+      "ok": true,
+      "hospital": {
+        "hospitalId": "HOSP_GOLDEN_1",
+        "name": "National Golden Hospital",
+        "city": "Bangalore",
+        "phone": "+91 80 1234 5678"
+      },
+      "receivedAt": "2026-10-24T10:00:00.000Z",
+      "authorizedAt": "2026-10-24T10:00:01.000Z",
+      "snapshotAt": "2026-10-24T10:00:02.000Z",
+      "dataUpdatedAt": "2026-10-24T09:00:00.000Z",
+      "rid": "550e8400-e29b-41d4-a716-446655440000",
+      "op": "READ_HOSPITAL",
+      "iat": 1700000005,
+      "exp": 1700000120
+    },
+    "packet": {
+      "v": 2,
+      "t": "MEDICAL_DATA_RESPONSE",
+      "op": "READ_HOSPITAL",
+      "rid": "550e8400-e29b-41d4-a716-446655440000",
+      "org": "NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK",
+      "dst": "vMBSTCt_bxzxv8VMqeCWycZS6pM75CrosNdb4eD2-sA",
+      "iat": 1700000005,
+      "exp": 1700000120,
+      "ttl": 8,
+      "epk": "rAGyIJ6GNU-4UyN7XeD0-rE8f8v0M6YcAZNpYX_s8Qs",
+      "pay": "DAsKCQgHBgUEAwIBag7A4Yj_t33hu1ZRILXOBOn-DCulIee5vYrTiU19v1Q7ERttl0QIrytYazz6S6JiiXdSjrXaccLqqiTgMxrKhDajdqIUNjSSmL_SpECN_cIxakFo0Cnuopdysuay-T8Lv0ofoPGThE2ZlLwN7IlYvDvcpmn7CGr2r3VkFWzdipAEOG5esbfX8HQE-8N-vqVzDYkWOtC-Er4LU5Fo7r1dLgEobGXH3y4hH95w_Uexrss_OWM_qRR2mBPjKnJlTuzEDKgSeUWFIgDnRI95fUpezIqoZIFjDfqtMO4dDzQAsbrhQdwIWAVuf1xomCS64wmP_ncUZdt4qYeHGLgPjfVh_ciuCjy0IZRUkOmHyZYoXzDZBdFIJvmdlC9Odgq1uADzHYVNeHFEQWPv1gfm6Hikumlffjgf0HfxJgwPRL2XfPu_s9QQySu7koJTMU1LTfLYi16CDiAgfCji9hLzZfPgQInk2GWWgo9yIsQvNPKbvERJEykGNLvmLBTZBieFN-zUfG3vFQvLef0EGJYrSoQEuBSgnePrtpnvYe47VMzZ",
+      "sig": "wN0p08gzYzHKtYb-MiZL7bKS-aKVTm5ifDiPeHBsrAOxT89_Un_xbfCGScCiFWIjeOgwbGKlJ9_9-4Vva5OQBg"
+    }
+  },
+  "enrollmentProofVector": {
+    "token": "enrollment_jwt_token_for_verification_test",
+    "proofBytesUtf8": "[2,\"REGISTER_DEVICE\",\"NHUPmL1Z_PyUbaRaqr6TO-FUpLUJThxK\",\"iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=\",\"zo060cy2M+x7cMF4FKXHbs0CloUFDTRHRboFhw5YfVk=\",\"2a305e5907abf0a9d1e0bc0bb82a0a14422b8fc5f42bd6e2ee01916e63b2955c\"]",
+    "proofSignatureBase64Url": "2Km0JVMJsXvlh0l9HS3ZP5rYjuvlwNM9b65I9YtTCwx4Ktb9wLIcF4j-4rVXZggspyKSrjV3Z9JcSVNozGzbAA"
+  }
+}

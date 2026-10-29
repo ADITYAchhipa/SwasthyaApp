@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
@@ -11,7 +12,7 @@ void main() async {
   
   // Bootstrap Offline Mesh
   final meshManager = OfflineMeshManager.instance;
-  await meshManager.bootstrap();
+  unawaited(meshManager.bootstrap());
 
   runApp(
     MultiProvider(
@@ -37,3 +38,4 @@ class SwasthyaTapApp extends StatelessWidget {
     );
   }
 }
+

@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import 'auth_storage.dart';
+import 'offline_mesh/offline_mesh_manager.dart';
+import 'offline_mesh/offline_packet.dart';
+import 'offline_mesh/mesh_config.dart';
+import 'offline_mesh/mesh_read_policy.dart';
 
 /// Centralized HTTP client for all SwasthyaTap backend calls.
 /// Falls back gracefully to mock data if the server is unreachable.
@@ -32,6 +37,17 @@ class ApiService {
   // ─── Auth Token (in-memory cache + persisted to disk) ────────────────────
   static String? _authToken;
   static String? _citizenId;
+  static String? _hospitalRole;
+  static String? _personnelId;
+  static String? _personnelName;
+  static String? _personnelDesignation;
+
+  static String get hospitalRole => _hospitalRole ?? 'doctor';
+  static bool get isDoctor => hospitalRole == 'doctor';
+  static bool get isSupervisor => hospitalRole == 'supervisor';
+  static String? get personnelId => _personnelId;
+  static String? get personnelName => _personnelName;
+  static String? get personnelDesignation => _personnelDesignation;
 
   /// Call once at app startup (in SplashScreen) to restore saved session.
   static Future<AuthSession?> init() async {
@@ -47,13 +63,26 @@ class ApiService {
   static void setToken(String token, String citizenId) {
     _authToken = token;
     _citizenId = citizenId;
+    _hospitalRole = null;
     // Also persist to disk so the session survives app restarts
     AuthStorage.saveCitizenSession(token: token, citizenId: citizenId);
   }
 
-  static void setHospitalToken(String token, String hospitalId, String hospitalName) {
+  static void setHospitalToken(
+    String token,
+    String hospitalId,
+    String hospitalName, {
+    String role = 'doctor',
+    String? personnelId,
+    String? personnelName,
+    String? designation,
+  }) {
     _authToken = token;
     _citizenId = null;
+    _hospitalRole = role;
+    _personnelId = personnelId;
+    _personnelName = personnelName;
+    _personnelDesignation = designation;
     AuthStorage.saveHospitalSession(
       token: token,
       hospitalId: hospitalId,
@@ -62,8 +91,14 @@ class ApiService {
   }
 
   static void clearToken() {
+    unawaited(OfflineMeshManager.instance.stop(revokeToken: _authToken, clearIdentity: true)
+        .catchError((Object _) {}));
     _authToken = null;
     _citizenId = null;
+    _hospitalRole = null;
+    _personnelId = null;
+    _personnelName = null;
+    _personnelDesignation = null;
     AuthStorage.clearSession();
   }
 
@@ -487,6 +522,93 @@ class ApiService {
     } catch (e) {
       debugPrint('verifyOrganConsent error: $e');
       return false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // HOSPITAL RBAC & MANAGEMENT ENDPOINTS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Fetch authorized personnel roster (Doctor or Supervisor)
+  static Future<List<Map<String, dynamic>>> getHospitalPersonnel(String hospitalId) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/hospitals/$hospitalId/personnel'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['personnel'] is List) {
+          return List<Map<String, dynamic>>.from(body['personnel'] as List);
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Add personnel to hospital roster (SUPERVISOR ONLY)
+  static Future<Map<String, dynamic>> addHospitalPersonnel(
+    String hospitalId, {
+    required String personnelId,
+    required String name,
+    required String designation,
+    required String role,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/hospitals/$hospitalId/personnel'),
+        headers: _headers,
+        body: jsonEncode({
+          'personnelId': personnelId,
+          'name': name,
+          'designation': designation,
+          'role': role,
+        }),
+      ).timeout(const Duration(seconds: 8));
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  /// Remove personnel from hospital roster (SUPERVISOR ONLY)
+  static Future<Map<String, dynamic>> removeHospitalPersonnel(
+    String hospitalId,
+    String personnelId,
+  ) async {
+    try {
+      final res = await http.delete(
+        Uri.parse('$baseUrl/hospitals/$hospitalId/personnel/$personnelId'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 8));
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  /// Update hospital bed capacity & emergency status (DOCTOR or SUPERVISOR)
+  static Future<Map<String, dynamic>> updateHospitalBeds(
+    String hospitalId,
+    int bedCount, {
+    String? status,
+    String? statusDetails,
+  }) async {
+    try {
+      final res = await http.put(
+        Uri.parse('$baseUrl/hospitals/$hospitalId/beds'),
+        headers: _headers,
+        body: jsonEncode({
+          'bedCount': bedCount,
+          if (status != null) 'status': status,
+          if (statusDetails != null) 'statusDetails': statusDetails,
+        }),
+      ).timeout(const Duration(seconds: 8));
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -1103,10 +1225,12 @@ class ApiService {
   /// Submit a mesh packet to the server gateway.
   static Future<Map<String, dynamic>?> submitMeshPacket(Map<String, dynamic> packetJson) async {
     try {
+      final packet = OfflinePacket.fromJson(packetJson);
+      if (!MeshConfig.enabled || packet.t != 'MEDICAL_DATA_REQUEST' || !packet.isValidReadPacket()) return null;
       final response = await http
           .post(
             Uri.parse('$baseUrl/offline-mesh/request'),
-            headers: _headers,
+            headers: const {'Content-Type': 'application/json'},
             body: jsonEncode(packetJson),
           )
           .timeout(const Duration(seconds: 15));
@@ -1117,47 +1241,7 @@ class ApiService {
       debugPrint('submitMeshPacket failed status: ${response.statusCode}');
       return null;
     } catch (e) {
-      debugPrint('submitMeshPacket error: $e');
       return null;
-    }
-  }
-
-  /// Poll for a mesh response if the gateway lost the response mid-flight.
-  static Future<Map<String, dynamic>?> pollMeshResponse(String requestId) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/offline-mesh/response/$requestId'),
-            headers: _headers,
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      }
-      debugPrint('pollMeshResponse failed status: ${response.statusCode}');
-      return null;
-    } catch (e) {
-      debugPrint('pollMeshResponse error: $e');
-      return null;
-    }
-  }
-
-  /// Acknowledge that a mesh response was received.
-  static Future<bool> ackMeshResponse(String requestId) async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/offline-mesh/response-ack'),
-            headers: _headers,
-            body: jsonEncode({'requestId': requestId}),
-          )
-          .timeout(const Duration(seconds: 8));
-
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint('ackMeshResponse error: $e');
-      return false;
     }
   }
 
@@ -1177,4 +1261,25 @@ class ApiService {
       return null;
     }
   }
+
+  /// Existing hospital detail endpoint; never synthesizes hospital data.
+  static Future<Map<String, dynamic>?> getHospital(String hospitalId) async {
+    if (!MeshReadPolicy.validHospitalId(hospitalId)) return null;
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/hospitals/${Uri.encodeComponent(hospitalId)}'),
+          headers: _headers).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return {'ok': true, 'hospital': body['hospital'], 'source': 'online'};
+    } catch (_) { return null; }
+  }
+
+  static Future<void> revokeMeshDevice(String deviceId, String token) async {
+    try {
+      await http.post(Uri.parse('$baseUrl/offline-mesh/revoke-device'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        body: jsonEncode({'deviceId': deviceId})).timeout(const Duration(seconds: 8));
+    } catch (_) { /* offline revocation cannot be guaranteed; local keys are erased */ }
+  }
 }
+

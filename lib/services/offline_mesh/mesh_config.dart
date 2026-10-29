@@ -1,93 +1,78 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'mesh_read_policy.dart';
 
 class MeshConfig {
-  static const bool kEnabledAtBuild = true;        // compile-time kill switch
-  static bool enabled = false;                     // remote + consent gated, default OFF
-  static int maxTtl = 8;
-  static Duration requestTimeout = const Duration(seconds: 120);
-  static int maxPacketSizeBytes = 128 * 1024;
+  // Opt in explicitly for validation builds; production enablement requires the
+  // acceptance checks in OFFLINE_MESH_RELAY_PLAN.md.
+  static const bool kEnabledAtBuild = bool.fromEnvironment('OFFLINE_MESH_ENABLED');
+  static bool enabled = false;
+  static int maxTtl = MeshReadPolicy.maxHops;
+  static Duration requestTimeout = const Duration(seconds: MeshReadPolicy.maxLifetimeSeconds);
+  static int maxPacketSizeBytes = MeshReadPolicy.maxPacketBytes;
   static int maxRetries = 3;
-  static const List<Duration> retryDelays = [
-    Duration(seconds: 5),
-    Duration(seconds: 15),
-    Duration(seconds: 30)
-  ];
+  static const List<Duration> retryDelays = [Duration(seconds: 5), Duration(seconds: 15), Duration(seconds: 30)];
   static int maxForwardAttemptsPerPacket = 3;
-  static Duration clockSkewTolerance = const Duration(minutes: 5);
-  static Duration routeTtl = const Duration(minutes: 5);
-  static Duration relayCacheRetention = const Duration(minutes: 30);
+  static Duration clockSkewTolerance = const Duration(seconds: 30);
+  static Duration routeTtl = const Duration(minutes: 2);
+  static Duration relayCacheRetention = const Duration(minutes: 2);
   static Duration maxScanDuration = const Duration(seconds: 90);
-  static bool allowMeteredGatewayUpload = false;   // §24
+  static bool allowMeteredGatewayUpload = false;
+  static bool backgroundRelay = false;
+  static int _fetchedAt = 0;
+  static const _configKey = 'mesh_config_cache';
+  static const _consentKey = 'mesh_consent';
+  static const _backgroundRelayKey = 'mesh_background_relay';
 
-  static const String _kConfigCacheKey = 'mesh_config_cache';
-  static const String _kConsentKey = 'mesh_consent';
-
-  /// Initialize the configuration from cached values and consent settings.
-  static Future<void> loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Load remote config from cache
-    final cachedStr = prefs.getString(_kConfigCacheKey);
-    if (cachedStr != null) {
-      try {
-        final Map<String, dynamic> data = jsonDecode(cachedStr);
-        _applyJson(data);
-      } catch (_) {
-        // Fallback to default config if decode fails
-      }
-    }
-
-    // Load user consent
-    final userConsented = prefs.getBool(_kConsentKey) ?? false;
-    
-    // Evaluate if mesh is enabled: compile flag AND user consent
-    // Wait, the plan says: remote + consent gated. Let's make sure enabled is evaluated correctly.
-    enabled = kEnabledAtBuild && userConsented;
+  /// Continuous runtime lease validation (24 hours).
+  static bool get isRuntimeLeaseValid {
+    if (!kEnabledAtBuild || !enabled) return false;
+    if (_fetchedAt <= 0) return false;
+    final age = DateTime.now().millisecondsSinceEpoch ~/ 1000 - _fetchedAt;
+    return age >= 0 && age <= 86400;
   }
 
-  /// Save remote configuration response to cache and update active config.
+  static Future<void> loadFromPrefs() async {
+    enabled = false;
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      backgroundRelay = prefs.getBool(_backgroundRelayKey) ?? false;
+      final data = jsonDecode(prefs.getString(_configKey) ?? '{}') as Map<String, dynamic>;
+      final fetchedAt = data['fetchedAt'] as int? ?? 0;
+      _fetchedAt = fetchedAt;
+      final age = DateTime.now().millisecondsSinceEpoch ~/ 1000 - fetchedAt;
+      enabled = kEnabledAtBuild && (prefs.getBool(_consentKey) ?? false) &&
+          data['enabled'] == true && data['protocolVersion'] == MeshReadPolicy.version &&
+          age >= 0 && age <= 86400;
+    } catch (_) { enabled = false; }
+  }
+
   static Future<void> updateRemoteConfig(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kConfigCacheKey, jsonEncode(data));
-    
-    _applyJson(data);
-    await loadFromPrefs(); // re-evaluates 'enabled' status with consent
-  }
-
-  /// Update user consent status.
-  static Future<void> setConsent(bool consented) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kConsentKey, consented);
+    await prefs.setString(_configKey, jsonEncode({
+      'enabled': data['enabled'] == true,
+      'protocolVersion': data['protocolVersion'],
+      'fetchedAt': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    }));
     await loadFromPrefs();
   }
 
-  /// Get current user consent status.
-  static Future<bool> getConsent() async {
+  static Future<void> setConsent(bool consented) async {
+    if (!consented) enabled = false;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kConsentKey) ?? false;
+    await prefs.setBool(_consentKey, consented);
+    await loadFromPrefs();
   }
 
-  static void _applyJson(Map<String, dynamic> data) {
-    if (data.containsKey('maxTtl')) {
-      maxTtl = data['maxTtl'] as int;
-    }
-    if (data.containsKey('requestTimeoutSeconds')) {
-      requestTimeout = Duration(seconds: data['requestTimeoutSeconds'] as int);
-    }
-    if (data.containsKey('maxPacketSizeBytes')) {
-      maxPacketSizeBytes = data['maxPacketSizeBytes'] as int;
-    } else if (data.containsKey('maxPacketSizeKb')) {
-      maxPacketSizeBytes = (data['maxPacketSizeKb'] as int) * 1024;
-    }
-    if (data.containsKey('maxRetries')) {
-      maxRetries = data['maxRetries'] as int;
-    }
-    if (data.containsKey('maxForwardAttemptsPerPacket')) {
-      maxForwardAttemptsPerPacket = data['maxForwardAttemptsPerPacket'] as int;
-    }
-    if (data.containsKey('allowMeteredGatewayUpload')) {
-      allowMeteredGatewayUpload = data['allowMeteredGatewayUpload'] as bool;
-    }
+  static Future<bool> getConsent() async =>
+      (await SharedPreferences.getInstance()).getBool(_consentKey) ?? false;
+
+  static Future<void> setBackgroundRelay(bool enabled) async {
+    backgroundRelay = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_backgroundRelayKey, enabled);
   }
+
+  static Future<bool> getBackgroundRelay() async =>
+      (await SharedPreferences.getInstance()).getBool(_backgroundRelayKey) ?? false;
 }

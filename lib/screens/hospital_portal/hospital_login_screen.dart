@@ -159,7 +159,21 @@ class _HospitalLoginScreenState extends State<HospitalLoginScreen> {
         final hospitalData = result['hospital'] as Map<String, dynamic>?;
         final hId = hospitalData?['hospitalId'] as String? ?? _hospitalIdController.text.trim();
         final hName = hospitalData?['name'] as String? ?? 'Hospital';
-        ApiService.setHospitalToken((result['token'] ?? '') as String, hId, hName);
+        final personnelData = (result['personnel'] ?? hospitalData?['personnel']) as Map<String, dynamic>?;
+        final pRole = personnelData?['role'] as String? ?? 'doctor';
+        final pId = personnelData?['personnelId'] as String?;
+        final pName = personnelData?['name'] as String?;
+        final pDesig = personnelData?['designation'] as String?;
+
+        ApiService.setHospitalToken(
+          (result['token'] ?? '') as String,
+          hId,
+          hName,
+          role: pRole,
+          personnelId: pId,
+          personnelName: pName,
+          designation: pDesig,
+        );
         
         // Enroll device with offline mesh network
         OfflineMeshManager.instance.registerDeviceIfNeeded();

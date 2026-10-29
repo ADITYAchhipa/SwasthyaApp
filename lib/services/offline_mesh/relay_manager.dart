@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:swasthya_tap/services/api_service.dart';
 import 'package:swasthya_tap/services/offline_mesh/crypto_manager.dart';
+import 'mesh_config.dart';
+import 'device_identity.dart';
 import 'package:swasthya_tap/services/offline_mesh/mesh_logger.dart';
 import 'package:swasthya_tap/services/offline_mesh/network_manager.dart';
 import 'package:swasthya_tap/services/offline_mesh/offline_packet.dart';
@@ -20,6 +22,7 @@ class RelayManager {
 
   /// Processes an incoming raw frame from a peer.
   Future<void> handleFrame(MeshFrame frame) async {
+    if (!MeshConfig.enabled || frame.data.length > MeshConfig.maxPacketSizeBytes + 28) return;
     final peerId = frame.peerId;
     final sessionKey = PeerManager.instance.getSessionKey(peerId);
 
@@ -55,10 +58,18 @@ class RelayManager {
 
   /// Evaluates and routes an OfflinePacket.
   Future<void> processPacket(OfflinePacket packet, {required String senderPeerId}) async {
+    if (!MeshConfig.enabled || !packet.isValidReadPacket()) return;
+    // Invalid responses must not poison the duplicate cache or reverse route.
+    if (packet.t == 'MEDICAL_DATA_RESPONSE') {
+      if (!DeviceIdentity.hasInstance) return;
+      final key = DeviceIdentity.instance.serverSigningPublicKey;
+      if (key == null || !await CryptoManager.verify(message: packet.getCanonicalBytes(),
+          signatureBytes: base64Url.decode(packet.sig), ed25519PubKeyBytes: key)) return;
+    }
     final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     // A. Packet verification
-    if (packet.v != 1) {
+    if (packet.v != 2) {
       MeshLogger.logError('UNKNOWN_VERSION', requestId: packet.rid);
       return;
     }
@@ -74,7 +85,7 @@ class RelayManager {
     }
 
     // B. Deduplication check
-    final isDuplicate = await RelayCache.instance.contains(packet.rid);
+    final isDuplicate = await RelayCache.instance.contains(packet.rid, packet.t);
     
     // We only process duplicates if we are the originator waiting for a RESPONSE
     if (isDuplicate) {
@@ -113,7 +124,9 @@ class RelayManager {
 
       // Check if this device can act as a Gateway
       final hasInternet = await NetworkManager.instance.isInternetAvailable();
-      if (hasInternet) {
+      final isMetered = await NetworkManager.instance.isMeteredConnection();
+      final uploadAllowed = !isMetered || MeshConfig.allowMeteredGatewayUpload;
+      if (hasInternet && uploadAllowed && MeshConfig.enabled) {
         try {
           MeshLogger.log({
             'requestId': packet.rid,
@@ -128,7 +141,7 @@ class RelayManager {
             final responsePacket = OfflinePacket.fromJson(responsePacketJson);
 
             // Mark request complete in our cache
-            await RelayCache.instance.markCompleted(packet.rid);
+            await RelayCache.instance.markCompleted(packet.rid, packet.t);
 
             // Route RESPONSE back along the reverse path
             await processPacket(responsePacket, senderPeerId: '');
@@ -147,17 +160,18 @@ class RelayManager {
       // Check if we are the requesting originator
       if (OfflineRequestManager.instance.isPending(packet.rid)) {
         await OfflineResponseManager.instance.handleResponse(packet);
-        await RelayCache.instance.markCompleted(packet.rid);
+        await RelayCache.instance.markCompleted(packet.rid, packet.t);
         await RouteManager.instance.deleteRoute(packet.rid);
         return;
       }
 
       // Relay: look up the reverse route path
+      packet.ttl--;
       final route = await RouteManager.instance.getRoute(packet.rid);
       if (route != null && route.previousPeer.isNotEmpty) {
         final success = await _sendToPeer(route.previousPeer, packet);
         if (success) {
-          await RelayCache.instance.markCompleted(packet.rid);
+          await RelayCache.instance.markCompleted(packet.rid, packet.t);
           await RouteManager.instance.deleteRoute(packet.rid);
         }
       }
@@ -171,6 +185,7 @@ class RelayManager {
 
   /// Processes outbound items currently in the queue, attempting to forward them to eligible peers.
   Future<void> triggerQueueProcessing() async {
+    if (!MeshConfig.enabled) return;
     final pending = await MeshQueue.instance.getPendingPackets();
     if (pending.isEmpty) return;
 
@@ -198,6 +213,7 @@ class RelayManager {
   }
 
   Future<bool> _sendToPeer(String peerId, OfflinePacket packet) async {
+    if (!MeshConfig.enabled || !packet.isValidReadPacket()) return false;
     final transport = PeerManager.instance.getTransport(peerId);
     final sessionKey = PeerManager.instance.getSessionKey(peerId);
 

@@ -362,11 +362,22 @@ router.post('/hospital/verify', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
-    // Use first authorized personnel as default login identity
-    const defaultPersonnel = hospital.authorizedPersonnel?.[0] || { personnelId: 'STAFF-001' };
+    // Use selected personnel if provided, or first authorized personnel as default login identity
+    const personnelId = req.body.personnelId;
+    const personnel = (personnelId && hospital.authorizedPersonnel?.find(p => p.personnelId === personnelId))
+      || hospital.authorizedPersonnel?.[0]
+      || { personnelId: 'STAFF-001', role: 'doctor', designation: 'Medical Officer' };
+
+    const personnelRole = personnel.role || (personnel.designation?.toLowerCase().includes('supervisor') ? 'supervisor' : 'doctor');
 
     const token = jwt.sign(
-      { hospitalId: hospital.hospitalId, personnelId: defaultPersonnel.personnelId, hospitalName: hospital.name },
+      {
+        hospitalId: hospital.hospitalId,
+        personnelId: personnel.personnelId,
+        hospitalName: hospital.name,
+        role: personnelRole,
+        designation: personnel.designation || 'Medical Officer',
+      },
       process.env.JWT_SECRET,
       { expiresIn: '12h' }
     );
@@ -382,8 +393,19 @@ router.post('/hospital/verify', async (req, res) => {
         lat: hospital.lat,
         lng: hospital.lng,
         specialties: hospital.specialties,
+        personnel: {
+          personnelId: personnel.personnelId,
+          name: personnel.name,
+          role: personnelRole,
+          designation: personnel.designation,
+        },
       },
-      personnel: defaultPersonnel,
+      personnel: {
+        personnelId: personnel.personnelId,
+        name: personnel.name,
+        role: personnelRole,
+        designation: personnel.designation,
+      },
     });
   } catch (err) {
     console.error('hospital verify error:', err);

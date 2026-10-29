@@ -53,7 +53,6 @@ function verifyPacketSignature(packet, signingPublicKeyB64) {
 
     return crypto.verify(null, Buffer.from(canonicalString), publicKeyObject, signature);
   } catch (err) {
-    console.error('[mesh] signature verification failed:', err);
     return false;
   }
 }
@@ -189,6 +188,7 @@ function destinationToken(deviceId) {
  */
 function getCanonicalString(packet) {
   const signKeys = ['v', 't', 'rid', 'org', 'dst', 'iat', 'exp', 'epk', 'pay'];
+  if (packet.v === 2) signKeys.push('op');
   const map = {};
   for (const k of signKeys) {
     map[k] = packet[k] !== undefined ? packet[k] : '';
@@ -209,7 +209,11 @@ function getCanonicalString(packet) {
  * Re-create canonical JSON string representation of AAD region.
  */
 function getAadBytes(packet) {
-  const aadKeys = ['v', 't', 'rid', 'org', 'dst', 'iat', 'exp', 'epk'];
+  // The ephemeral key is generated after AAD is supplied. v2 binds that key
+  // through the packet signature; both sides now use identical AAD.
+  const aadKeys = ['v', 't', 'rid', 'org', 'dst', 'iat', 'exp'];
+  if (packet.v === 2) aadKeys.push('op');
+  else aadKeys.push('epk');
   const map = {};
   for (const k of aadKeys) {
     map[k] = packet[k] !== undefined ? packet[k] : '';

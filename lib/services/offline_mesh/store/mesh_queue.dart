@@ -53,6 +53,9 @@ class MeshQueue {
 
   /// Enqueue an outbound packet for routing.
   Future<void> enqueue(OfflinePacket packet) async {
+    if (!MeshConfig.enabled || !packet.isValidReadPacket()) {
+      throw StateError('UNSUPPORTED_MESH_REQUEST');
+    }
     final db = await MeshDatabase.instance.database;
     final blob = jsonEncode(packet.toJson());
 
@@ -84,7 +87,8 @@ class MeshQueue {
       orderBy: 'next_attempt_at ASC',
     );
 
-    return results.map((m) => QueueItem.fromMap(m)).toList();
+    return results.map((m) => QueueItem.fromMap(m))
+        .where((item) => item.packet.isValidReadPacket()).toList();
   }
 
   /// Update the status of a queue item.

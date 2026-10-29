@@ -42,6 +42,40 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
   }
 
   bool _isLoadingPatient = false;
+  MeshUiState? _meshUiState;
+  String? _patientDataSource;
+  int _hospitalBeds = 120;
+  bool _isUpdatingBeds = false;
+
+  void _changeBeds(int delta) async {
+    setState(() {
+      _hospitalBeds = (_hospitalBeds + delta).clamp(0, 9999);
+      _isUpdatingBeds = true;
+    });
+    try {
+      await ApiService.updateHospitalBeds(
+        'HOSP_TEST_101',
+        _hospitalBeds,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bed capacity updated to $_hospitalBeds'),
+            backgroundColor: const Color(0xFF0F766E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isUpdatingBeds = false);
+  }
+
+  void _openPersonnelManager() async {
+    showDialog(
+      context: context,
+      builder: (ctx) => const _PersonnelManagerDialog(hospitalId: 'HOSP_TEST_101'),
+    );
+  }
 
   void _searchPatient(SwasthyaTapProvider provider) async {
     final slug = _searchController.text.trim().toLowerCase();
@@ -51,20 +85,15 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
       _isLoadingPatient = true;
       _hasSearched = false;
       _searchedProfile = null;
+      _meshUiState = null;
+      _patientDataSource = null;
     });
 
     try {
-      final uiStateNotifier = ValueNotifier<MeshUiState>(MeshUiState.searching);
-      bool isSheetShown = false;
-
       final result = await MedicalDataGateway.fetchCitizen(
         slug,
         onProgress: (state) {
-          uiStateNotifier.value = state;
-          if (!isSheetShown && state != MeshUiState.received && state != MeshUiState.failed) {
-            isSheetShown = true;
-            showMeshProgressSheet(context, uiStateNotifier);
-          }
+          if (mounted) setState(() => _meshUiState = state);
         },
       );
 
@@ -82,6 +111,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           _hasSearched = true;
           _organConsentVerified = false;
           _isLoadingPatient = false;
+          _patientDataSource = result.source ?? 'cloud';
         });
         return;
       }
@@ -97,6 +127,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         _hasSearched = true;
         _organConsentVerified = false;
         _isLoadingPatient = false;
+        _patientDataSource = 'local_cache';
       });
     } catch (_) {
       setState(() {
@@ -227,8 +258,41 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Role & Identity Banner
+            _buildHospitalRoleBanner(),
+
+            // Supervisor Administrative Controls (Visible to Supervisors)
+            if (ApiService.isSupervisor) ...[
+              _buildSupervisorManagementCard(),
+            ],
+
             // Search section
-            Text(_t('patient_lookup'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  ApiService.isDoctor ? 'Patient Lookup (Offline Mesh Capable)' : 'Patient Lookup (Admission Desk)',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                if (ApiService.isDoctor)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F766E).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF0F766E).withOpacity(0.2)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.wifi_tethering_rounded, size: 12, color: Color(0xFF0F766E)),
+                        SizedBox(width: 4),
+                        Text('Mesh Enabled', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F766E))),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(_t('scan_or_enter_code'),
                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
@@ -250,12 +314,36 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             _buildClinicalShortcuts(provider),
             const SizedBox(height: 24),
 
-            // Results
+            // Results & Loading State
             if (_isLoadingPatient)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: CircularProgressIndicator(color: AppTheme.accentTeal),
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    const CircularProgressIndicator(color: AppTheme.accentTeal),
+                    const SizedBox(height: 14),
+                    Text(
+                      _meshUiState != null
+                          ? 'Communicating over peer-to-peer mesh (${_meshUiState!.name})...'
+                          : 'Querying patient records...',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _meshUiState != null
+                          ? 'Relaying encrypted patient read to nearby hospital gateway'
+                          : 'Checking secure clinical database',
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
               ),
             if (_hasSearched) ...[
@@ -365,6 +453,34 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Data source tag (Mesh vs Cloud)
+          if (_patientDataSource == 'mesh') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F766E).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF0F766E).withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_tethering_rounded, color: Color(0xFF0F766E), size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Retrieved over Offline Mesh Network (Doctor Verified Read)',
+                      style: TextStyle(
+                        color: Color(0xFF0F766E),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Header
           Row(
             children: [
@@ -936,20 +1052,8 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                           });
 
                           try {
-                             // 1. Fetch from backend
-                             final uiStateNotifier = ValueNotifier<MeshUiState>(MeshUiState.searching);
-                             bool isSheetShown = false;
-
-                             final result = await MedicalDataGateway.fetchCitizen(
-                               slug,
-                               onProgress: (state) {
-                                 uiStateNotifier.value = state;
-                                 if (!isSheetShown && state != MeshUiState.received && state != MeshUiState.failed) {
-                                   isSheetShown = true;
-                                   showMeshProgressSheet(context, uiStateNotifier);
-                                 }
-                               },
-                             );
+                             // 1. Fetch from backend (online path; patient relay is blocked)
+                             final result = await MedicalDataGateway.fetchCitizen(slug);
 
                              final profile = result.profile;
                              if (profile != null) {
@@ -1029,6 +1133,381 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 },
               ),
       ),
+    );
+  }
+
+  Widget _buildHospitalRoleBanner() {
+    final role = ApiService.hospitalRole;
+    final isDoctor = ApiService.isDoctor;
+    final personnelName = ApiService.personnelName ?? (isDoctor ? 'Dr. Amit Shah' : 'Sarah Joseph');
+    final designation = ApiService.personnelDesignation ?? (isDoctor ? 'Chief Medical Officer' : 'Hospital Supervisor');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDoctor ? const Color(0xFF0F766E).withOpacity(0.2) : Colors.indigo.withOpacity(0.2),
+        ),
+        boxShadow: const [
+          BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDoctor ? const Color(0xFF0F766E).withOpacity(0.1) : Colors.indigo.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isDoctor ? Icons.medical_services_rounded : Icons.admin_panel_settings_rounded,
+                  color: isDoctor ? const Color(0xFF0F766E) : Colors.indigo,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      personnelName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
+                    ),
+                    Text(
+                      designation,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDoctor ? const Color(0xFF0F766E).withOpacity(0.12) : Colors.indigo.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDoctor ? const Color(0xFF0F766E).withOpacity(0.3) : Colors.indigo.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isDoctor ? Icons.verified_user_rounded : Icons.shield_rounded,
+                      size: 13,
+                      color: isDoctor ? const Color(0xFF0F766E) : Colors.indigo,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      role.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDoctor ? const Color(0xFF0F766E) : Colors.indigo,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDoctor ? Icons.wifi_tethering_rounded : Icons.manage_accounts_rounded,
+                  size: 14,
+                  color: AppTheme.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isDoctor
+                        ? 'Authorized for offline peer-to-peer mesh patient emergency reads & prescriptions'
+                        : 'Authorized for hospital personnel management & operational bed capacity',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupervisorManagementCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.indigo.withOpacity(0.2)),
+        boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.security_rounded, color: Colors.indigo, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Hospital Administration (Supervisor)',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _openPersonnelManager,
+                icon: const Icon(Icons.people_alt_rounded, size: 14, color: Colors.white),
+                label: const Text('Staff Roster', style: TextStyle(fontSize: 11, color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppTheme.borderColor),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Available Bed Capacity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Current: $_hospitalBeds beds', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: AppTheme.accentRed),
+                onPressed: _isUpdatingBeds || _hospitalBeds <= 0 ? null : () => _changeBeds(-1),
+                tooltip: 'Decrease beds',
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$_hospitalBeds',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: Color(0xFF0F766E)),
+                onPressed: _isUpdatingBeds ? null : () => _changeBeds(1),
+                tooltip: 'Increase beds',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonnelManagerDialog extends StatefulWidget {
+  final String hospitalId;
+  const _PersonnelManagerDialog({Key? key, required this.hospitalId}) : super(key: key);
+
+  @override
+  State<_PersonnelManagerDialog> createState() => _PersonnelManagerDialogState();
+}
+
+class _PersonnelManagerDialogState extends State<_PersonnelManagerDialog> {
+  List<Map<String, dynamic>> _personnel = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonnel();
+  }
+
+  void _loadPersonnel() async {
+    setState(() => _isLoading = true);
+    final list = await ApiService.getHospitalPersonnel(widget.hospitalId);
+    if (mounted) {
+      setState(() {
+        _personnel = list.isNotEmpty
+            ? list
+            : [
+                {'personnelId': 'DOC-001', 'name': 'Dr. Amit Shah', 'designation': 'Medical Officer', 'role': 'doctor'},
+                {'personnelId': 'SUP-001', 'name': 'Sarah Joseph', 'designation': 'Chief Administrator', 'role': 'supervisor'},
+              ];
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showAddDialog() {
+    final idCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final desigCtrl = TextEditingController();
+    String selectedRole = 'doctor';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Add Authorized Personnel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: idCtrl,
+                  decoration: const InputDecoration(labelText: 'Personnel ID (e.g. DOC-102)', isDense: true),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Full Name', isDense: true),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: desigCtrl,
+                  decoration: const InputDecoration(labelText: 'Designation (e.g. Cardiologist)', isDense: true),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: const InputDecoration(labelText: 'Access Role', isDense: true),
+                  items: const [
+                    DropdownMenuItem(value: 'doctor', child: Text('Doctor (Clinical & Mesh Read)')),
+                    DropdownMenuItem(value: 'supervisor', child: Text('Supervisor (Admin & Personnel)')),
+                    DropdownMenuItem(value: 'staff', child: Text('Staff (General Desk)')),
+                  ],
+                  onChanged: (val) => setDialogState(() => selectedRole = val ?? 'doctor'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (idCtrl.text.trim().isEmpty || nameCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                await ApiService.addHospitalPersonnel(
+                  widget.hospitalId,
+                  personnelId: idCtrl.text.trim(),
+                  name: nameCtrl.text.trim(),
+                  designation: desigCtrl.text.trim().isEmpty ? 'Medical Staff' : desigCtrl.text.trim(),
+                  role: selectedRole,
+                );
+                _loadPersonnel();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F766E)),
+              child: const Text('Add', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removePersonnel(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Personnel'),
+        content: Text('Are you sure you want to remove $id from authorized personnel?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ApiService.removeHospitalPersonnel(widget.hospitalId, id);
+      _loadPersonnel();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Hospital Personnel Roster', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF0F766E)),
+            tooltip: 'Add Staff Member',
+            onPressed: _showAddDialog,
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 360,
+        height: 320,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF0F766E)))
+            : ListView.separated(
+                itemCount: _personnel.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (ctx, i) {
+                  final p = _personnel[i];
+                  final role = p['role'] as String? ?? 'doctor';
+                  final isDoc = role == 'doctor';
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: isDoc ? const Color(0xFF0F766E).withOpacity(0.12) : Colors.indigo.withOpacity(0.12),
+                      child: Icon(
+                        isDoc ? Icons.medical_services_rounded : Icons.admin_panel_settings_rounded,
+                        size: 16,
+                        color: isDoc ? const Color(0xFF0F766E) : Colors.indigo,
+                      ),
+                    ),
+                    title: Text(
+                      p['name'] as String? ?? 'Staff Member',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      '${p['designation'] ?? 'Staff'} • ${role.toUpperCase()}',
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                      onPressed: () => _removePersonnel(p['personnelId'] as String? ?? ''),
+                    ),
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+      ],
     );
   }
 }

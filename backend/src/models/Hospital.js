@@ -21,6 +21,11 @@ const HospitalSchema = new mongoose.Schema(
         personnelId: String,
         name: String,
         designation: String,
+        role: {
+          type: String,
+          enum: ['doctor', 'supervisor', 'staff'],
+          default: 'doctor',
+        },
       },
     ],
 

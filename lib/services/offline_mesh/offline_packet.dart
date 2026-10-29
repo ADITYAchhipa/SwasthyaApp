@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'mesh_read_policy.dart';
 
 class OfflinePacket {
   final int v;                  // packet version, always 1
   final String t;               // packet type: REQUEST | RESPONSE | HANDSHAKE_INIT | HANDSHAKE_ACK | ACK
+  final String op;
   final String rid;             // request_id (uuid)
   final String org;             // origin_device_id_hash
   final String dst;             // destination_token
@@ -16,6 +18,7 @@ class OfflinePacket {
   OfflinePacket({
     required this.v,
     required this.t,
+    this.op = '',
     required this.rid,
     required this.org,
     this.dst = '',
@@ -38,6 +41,7 @@ class OfflinePacket {
       'exp': exp,
       'epk': epk,
       'pay': pay,
+      if (v == 2) 'op': op,
     };
   }
 
@@ -71,7 +75,8 @@ class OfflinePacket {
       'dst': dst,
       'iat': iat,
       'exp': exp,
-      'epk': epk,
+      if (v == 1) 'epk': epk,
+      if (v == 2) 'op': op,
     };
     final sortedKeys = map.keys.toList()..sort();
     final buffer = StringBuffer('{');
@@ -99,6 +104,7 @@ class OfflinePacket {
       'epk': epk,
       'pay': pay,
       'sig': sig,
+      if (v == 2) 'op': op,
     };
   }
 
@@ -106,6 +112,7 @@ class OfflinePacket {
     return OfflinePacket(
       v: json['v'] as int,
       t: json['t'] as String,
+      op: json['op'] as String? ?? '',
       rid: json['rid'] as String,
       org: json['org'] as String,
       dst: json['dst'] as String? ?? '',
@@ -116,5 +123,19 @@ class OfflinePacket {
       pay: json['pay'] as String? ?? '',
       sig: json['sig'] as String? ?? '',
     );
+  }
+
+  /// Shared gateway/queue validation; authorization remains a server decision.
+  bool isValidReadPacket({int? now}) {
+    final time = now ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final encoding = RegExp(r'^[A-Za-z0-9_-]+$');
+    return v == MeshReadPolicy.version && MeshReadPolicy.approvedOperations.contains(op) &&
+        (t == 'MEDICAL_DATA_REQUEST' || t == 'MEDICAL_DATA_RESPONSE') &&
+        RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$').hasMatch(rid) &&
+        org.length == 32 && dst.length == 43 && epk.length == 43 && sig.length == 86 &&
+        [org, dst, epk, pay, sig].every(encoding.hasMatch) && pay.length >= 38 &&
+        iat <= time + 30 && exp > time && exp > iat && exp - iat <= MeshReadPolicy.maxLifetimeSeconds &&
+        ttl >= 0 && ttl <= MeshReadPolicy.maxHops &&
+        utf8.encode(jsonEncode(toJson())).length <= MeshReadPolicy.maxPacketBytes;
   }
 }

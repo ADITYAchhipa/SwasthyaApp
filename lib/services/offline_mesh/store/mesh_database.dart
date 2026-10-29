@@ -77,12 +77,11 @@ class MeshDatabase {
         whereArgs: [nowSec],
       );
 
-      // 2. Mark expired queue packets
-      await txn.update(
+      // Delete expired ciphertext; don't retain indefinitely in EXPIRED rows.
+      await txn.delete(
         'mesh_queue',
-        {'state': 'EXPIRED'},
-        where: 'expires_at < ? AND state != ?',
-        whereArgs: [nowSec, 'EXPIRED'],
+        where: 'expires_at <= ?',
+        whereArgs: [nowSec],
       );
 
       // 3. Delete expired routes

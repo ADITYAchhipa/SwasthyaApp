@@ -33,6 +33,8 @@ class PeerManager {
     if (peer.state == 'CONNECTED' && !_sessionKeys.containsKey(peer.peerId)) {
       // Auto-trigger handshake as initiator when connected
       _sendHandshakeInit(peer.peerId, transport);
+    } else if (peer.state == 'DISCONNECTED' || peer.state == 'DISCOVERED') {
+      transport.connectToPeer(peer.peerId);
     }
   }
 
@@ -223,5 +225,12 @@ class PeerManager {
 
   void dispose() {
     _handshakeCompleteController.close();
+  }
+
+  void clearSessions() {
+    _discoveredPeers.clear();
+    _sessionKeys.clear();
+    _peerHandshakeNonces.clear();
+    _peerTransports.clear();
   }
 }

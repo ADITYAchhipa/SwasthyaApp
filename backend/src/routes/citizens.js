@@ -561,5 +561,48 @@ router.post('/:id/medical-reports', authenticate, upload.single('file'), async (
   }
 });
 
+async function readPatientForDoctor(patientRef) {
+  let citizen = await Citizen.findOne({ profileId: patientRef });
+  if (!citizen && patientRef && patientRef.length === 64) {
+    const card = await NfcCard.findOne({ rawToken: patientRef });
+    if (card) citizen = await Citizen.findById(card.patientId);
+  }
+  if (!citizen) return null;
+
+  return {
+    id: citizen.profileId,
+    fullName: citizen.fullName,
+    bloodGroup: citizen.bloodGroup,
+    age: citizen.age,
+    address: citizen.address,
+    allergies: citizen.allergies,
+    medications: citizen.medications,
+    chronicConditions: citizen.chronicConditions,
+    specialInstructions: citizen.specialInstructions,
+    isDnr: citizen.isDnr,
+    emergencyContacts: citizen.emergencyContacts || [],
+    organPledge: citizen.organPledge || null,
+    insuranceCompany: citizen.insuranceCompany || '',
+    insurancePolicyNumber: citizen.insurancePolicyNumber || '',
+    prescriptions: (citizen.prescriptions || []).slice(0, 5),
+    medicalReports: (citizen.medicalReports || []).slice(0, 5).map(r => ({
+      name: r.name,
+      department: r.department,
+      date: r.date,
+      category: r.category,
+      notes: r.notes,
+    })),
+    isBloodDonor: citizen.isBloodDonor,
+    donorRadiusKm: citizen.donorRadiusKm,
+    homeLat: citizen.homeLat,
+    homeLng: citizen.homeLng,
+    phoneNumber: citizen.phoneNumber,
+    email: citizen.email || '',
+    profileCompleteness: typeof citizen.calculateCompleteness === 'function' ? citizen.calculateCompleteness() : 75,
+    updatedAt: citizen.updatedAt,
+  };
+}
+
+router.readPatientForDoctor = readPatientForDoctor;
 router.formatCitizen = formatCitizen;
 module.exports = router;

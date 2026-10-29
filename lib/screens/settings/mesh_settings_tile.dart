@@ -14,11 +14,11 @@ class MeshSettingsTile extends StatelessWidget {
           children: [
             SwitchListTile(
               title: const Text(
-                "Allow Offline Mesh Retrieval",
+                "Offline Mesh Relay Participation",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               subtitle: const Text(
-                "Allow SwasthyaTap to use nearby devices for offline data retrieval",
+                "Allow SwasthyaTap to forward encrypted hospital directory traffic for nearby devices",
                 style: TextStyle(fontSize: 13),
               ),
               value: provider.consent,
@@ -32,9 +32,10 @@ class MeshSettingsTile extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       title: const Text("Offline Mesh Participation"),
                       content: const Text(
-                        "Enabling this feature allows your device to securely and anonymously "
-                        "forward encrypted medical data requests and responses for other nearby users. "
-                        "No medical records or sensitive data will be readable by your device.",
+                        "Enabling this feature allows your device to forward encrypted "
+                        "hospital directory data requests and responses for other nearby users. "
+                        "Protected request details and returned hospital records remain encrypted "
+                        "and cannot be decrypted by intermediate devices.",
                       ),
                       actions: [
                         TextButton(
@@ -56,6 +57,26 @@ class MeshSettingsTile extends StatelessWidget {
                 }
               },
             ),
+            if (provider.consent) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: SwitchListTile(
+                  title: const Text(
+                    "Background Relay",
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    "Keep relay listening when the app is closed (uses battery and displays persistent notification)",
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  value: provider.backgroundRelay,
+                  activeColor: Colors.teal,
+                  onChanged: (bool value) async {
+                    await provider.setBackgroundRelay(value);
+                  },
+                ),
+              ),
+            ],
             const Divider(),
           ],
         );

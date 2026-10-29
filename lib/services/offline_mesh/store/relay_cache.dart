@@ -6,12 +6,12 @@ class RelayCache {
   RelayCache._internal();
 
   /// Check if a request has been seen before.
-  Future<bool> contains(String requestId) async {
+  Future<bool> contains(String requestId, String packetType) async {
     final db = await MeshDatabase.instance.database;
     final results = await db.query(
       'seen_requests',
       where: 'request_id = ?',
-      whereArgs: [requestId],
+      whereArgs: ['$packetType:$requestId'],
     );
     return results.isNotEmpty;
   }
@@ -28,7 +28,7 @@ class RelayCache {
     await db.insert(
       'seen_requests',
       {
-        'request_id': requestId,
+        'request_id': '$packetType:$requestId',
         'packet_type': packetType,
         'first_seen': nowSec,
         'expires_at': expiresAt,
@@ -38,25 +38,25 @@ class RelayCache {
     );
   }
 
-  /// Mark a request as successfully completed/delivered.
-  Future<void> markCompleted(String requestId) async {
+  /// Mark a request or response as successfully completed/delivered.
+  Future<void> markCompleted(String requestId, String packetType) async {
     final db = await MeshDatabase.instance.database;
     await db.update(
       'seen_requests',
       {'completed': 1},
       where: 'request_id = ?',
-      whereArgs: [requestId],
+      whereArgs: ['$packetType:$requestId'],
     );
   }
 
-  /// Check if the request has been marked completed.
-  Future<bool> isCompleted(String requestId) async {
+  /// Check if the request or response has been marked completed.
+  Future<bool> isCompleted(String requestId, String packetType) async {
     final db = await MeshDatabase.instance.database;
     final results = await db.query(
       'seen_requests',
       columns: ['completed'],
       where: 'request_id = ?',
-      whereArgs: [requestId],
+      whereArgs: ['$packetType:$requestId'],
     );
     if (results.isEmpty) return false;
     return (results.first['completed'] as int) == 1;

@@ -28,17 +28,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/citizens', citizenRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/blood-requests', bloodRequestRoutes);
-app.use('/api/hospitals', hospitalRoutes);
-app.use('/api/phcs', phcRoutes);
-app.use('/api/blood-banks', bloodBankRoutes);
-app.use('/api/health-reports', healthRoutes);
-app.use('/api/offline-mesh', offlineMeshRoutes);
-
 // ─── Database Connection Helper ────────────────────────────────────────────────
 let mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/swasthyatap';
 // Sanitize connection string: remove accidental leading/trailing quotes and spaces
@@ -128,13 +117,24 @@ app.use(async (req, res, next) => {
     await connectDb();
     next();
   } catch (err) {
-    res.status(500).json({
+    res.status(503).json({
       success: false,
-      message: 'Database connection failed',
+      message: 'Database connection unavailable',
       error: err.message,
     });
   }
 });
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
+app.use('/api/citizens', citizenRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/blood-requests', bloodRequestRoutes);
+app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/phcs', phcRoutes);
+app.use('/api/blood-banks', bloodBankRoutes);
+app.use('/api/health-reports', healthRoutes);
+app.use('/api/offline-mesh', offlineMeshRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 const healthCheck = async (req, res) => {

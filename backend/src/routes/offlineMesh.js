@@ -1,359 +1,217 @@
 const express = require('express');
-const router = express.Router();
 const crypto = require('crypto');
-
-const { authenticate, optionalAuth } = require('../middleware/auth');
+const router = express.Router();
 const MeshDevice = require('../models/MeshDevice');
 const OfflineMeshRequest = require('../models/OfflineMeshRequest');
-const Citizen = require('../models/Citizen');
-const NfcCard = require('../models/NfcCard');
-const citizensRouter = require('./citizens'); // contains formatCitizen
-
+const hospitals = require('./hospitals');
+const citizens = require('./citizens');
 const {
-  verifyPacketSignature,
-  openSealed,
-  sealForDevice,
-  signResponse,
-  destinationToken,
-  getAadBytes,
-  getServerPublicKeys,
+  verifyPacketSignature, openSealed, sealForDevice, signResponse,
+  destinationToken, getAadBytes, getCanonicalString, getServerPublicKeys,
 } = require('../services/meshCrypto');
+const {
+  validatePacket, validateReadPayload, READ_HOSPITAL, READ_PATIENT, APPROVED_OPERATIONS,
+  MAX_PACKET_BYTES, MAX_LIFETIME_SECONDS, MAX_HOPS,
+} = require('../services/meshValidation');
+const { verifyMeshSession, ownsDevice, validateCurrentPrincipal, validEnrollment } = require('../services/meshAccess');
 
-const { validatePacket } = require('../services/meshValidation');
+const enabled = () => process.env.OFFLINE_MESH_ENABLED === 'true';
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+const deny = (res, status, code) => res.status(status).json({ success: false, code });
+const audit = (requestId, op, status) => console.info('[mesh]', { requestId, operation: op, status });
 
-/**
- * GET /api/offline-mesh/config
- * Returns current mesh service configurations.
- */
-router.get('/config', (req, res) => {
-  res.json({
-    enabled: process.env.OFFLINE_MESH_ENABLED === 'true',
-    maxTtl: parseInt(process.env.OFFLINE_MESH_MAX_TTL || '8'),
-    requestTimeoutSeconds: parseInt(process.env.OFFLINE_MESH_REQUEST_TIMEOUT_SECONDS || '120'),
-    maxPacketSizeKb: parseInt(process.env.OFFLINE_MESH_MAX_PACKET_SIZE_KB || '128'),
-    maxRetries: parseInt(process.env.OFFLINE_MESH_MAX_RETRIES || '3'),
-  });
+router.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
 });
+router.get('/config', (req, res) => res.json({
+  enabled: enabled(), protocolVersion: 2, approvedOperations: APPROVED_OPERATIONS,
+  maxTtl: MAX_HOPS, requestTimeoutSeconds: MAX_LIFETIME_SECONDS,
+  maxPacketSizeBytes: MAX_PACKET_BYTES, maxRetries: 3,
+}));
+router.use((req, res, next) => enabled() ? next() : deny(res, 503, 'MESH_DISABLED'));
 
-/**
- * POST /api/offline-mesh/register-device
- * Authenticates user online and binds their public keys.
- */
-router.post('/register-device', authenticate, async (req, res) => {
+async function session(req, res, next) {
   try {
-    const { deviceId, signingPublicKey, agreementPublicKey } = req.body;
-    if (!deviceId || !signingPublicKey || !agreementPublicKey) {
-      return res.status(400).json({ success: false, message: 'Missing public keys or device ID' });
-    }
+    const authorization = req.get('Authorization') || '';
+    if (!authorization.startsWith('Bearer ')) throw new Error();
+    req.meshToken = authorization.slice(7);
+    req.meshUser = verifyMeshSession(req.meshToken);
+    await validateCurrentPrincipal(req.meshUser);
+    next();
+  } catch (_) { deny(res, 401, 'ACCESS_DENIED'); }
+}
 
+router.post('/register-device', session, async (req, res) => {
+  try {
+    if (!validEnrollment(req.body, req.meshToken)) return deny(res, 400, 'INVALID_ENROLLMENT');
+    const { deviceId, signingPublicKey, agreementPublicKey } = req.body;
+    const user = req.meshUser;
     let device = await MeshDevice.findOne({ deviceId });
     if (device) {
-      // Reject ownership rebinding if it belongs to someone else
-      if (req.user.role === 'hospital' && device.hospitalId && device.hospitalId !== req.user.hospitalId) {
-        return res.status(403).json({ success: false, message: 'Device owned by another hospital' });
+      // No ownership rebinding, key replacement or revoked-device resurrection.
+      if (!ownsDevice(user, device) || device.status !== 'active' ||
+          device.signingPublicKey !== signingPublicKey || device.agreementPublicKey !== agreementPublicKey) {
+        return deny(res, 403, 'ACCESS_DENIED');
       }
-      if (req.user.role === 'citizen' && device.citizenId && device.citizenId !== req.user.citizenId) {
-        return res.status(403).json({ success: false, message: 'Device owned by another citizen' });
-      }
-
-      device.signingPublicKey = signingPublicKey;
-      device.agreementPublicKey = agreementPublicKey;
-      device.lastSeenAt = new Date();
-      await device.save();
     } else {
-      const destToken = destinationToken(deviceId);
-      device = new MeshDevice({
-        deviceId,
-        signingPublicKey,
-        agreementPublicKey,
-        ownerType: req.user.role,
-        hospitalId: req.user.role === 'hospital' ? req.user.hospitalId : undefined,
-        citizenId: req.user.role === 'citizen' ? req.user.citizenId : undefined,
-        personnelId: req.user.role === 'hospital' ? req.user.personnelId : undefined,
-        destinationToken: destToken,
-        lastSeenAt: new Date(),
-      });
-      await device.save();
+      device = await MeshDevice.create({ deviceId, signingPublicKey, agreementPublicKey,
+        ownerType: user.role, hospitalId: user.hospitalId, citizenId: user.citizenId,
+        personnelId: user.personnelId, destinationToken: destinationToken(deviceId), lastSeenAt: new Date() });
     }
-
-    const serverPubs = getServerPublicKeys();
-    res.json({
-      success: true,
-      deviceId: device.deviceId,
-      destinationToken: device.destinationToken,
-      serverAgreementPublicKey: serverPubs.x25519PublicB64,
-      serverSigningPublicKey: serverPubs.ed25519PublicB64,
-      config: {
-        enabled: process.env.OFFLINE_MESH_ENABLED === 'true',
-        maxTtl: parseInt(process.env.OFFLINE_MESH_MAX_TTL || '8'),
-      },
-    });
-  } catch (err) {
-    console.error('[mesh] register-device error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+    const keys = getServerPublicKeys();
+    res.json({ success: true, deviceId, destinationToken: device.destinationToken,
+      serverAgreementPublicKey: keys.x25519PublicB64, serverSigningPublicKey: keys.ed25519PublicB64,
+      config: { enabled: enabled(), protocolVersion: 2 } });
+  } catch (_) { deny(res, 500, 'MESH_UNAVAILABLE'); }
 });
 
-/**
- * POST /api/offline-mesh/request
- * Gateway upload path. Validates and processes the packet.
- */
-router.post('/request', optionalAuth, async (req, res) => {
+// This only revokes mesh credentials; it never changes hospital records.
+router.post('/revoke-device', session, async (req, res) => {
   try {
-    if (process.env.OFFLINE_MESH_ENABLED !== 'true') {
-      return res.status(503).json({ success: false, code: 'MESH_DISABLED', message: 'Mesh network disabled' });
-    }
+    if (typeof req.body?.deviceId !== 'string') return deny(res, 400, 'INVALID_DEVICE');
+    const device = await MeshDevice.findOne({ deviceId: req.body.deviceId });
+    if (!device || !ownsDevice(req.meshUser, device)) return deny(res, 403, 'ACCESS_DENIED');
+    device.status = 'revoked';
+    await device.save();
+    await OfflineMeshRequest.updateMany({ originDeviceId: device.deviceId }, { $unset: { sealedResponse: 1 } });
+    res.json({ success: true });
+  } catch (_) { deny(res, 500, 'MESH_UNAVAILABLE'); }
+});
 
+function responsePacket(packet, device, payload, exp = packet.exp, op = packet.op) {
+  const iat = nowSeconds();
+  if (iat >= exp) return null;
+  const header = { v: 2, t: 'MEDICAL_DATA_RESPONSE', op,
+    rid: packet.rid, org: packet.org, dst: packet.dst, iat, exp, ttl: MAX_HOPS };
+  const sealed = sealForDevice({ ...payload, rid: packet.rid, op, iat, exp },
+    device.agreementPublicKey, getAadBytes(header), 'swasthyatap/mesh/v2/resp');
+  const response = { ...header, ...sealed };
+  response.sig = signResponse(getCanonicalString(response));
+  return Buffer.byteLength(JSON.stringify(response)) <= MAX_PACKET_BYTES ? response : null;
+}
+
+// Gateway is a ciphertext transport. Its bearer token confers no origin rights.
+router.post('/request', async (req, res) => {
+  try {
     const packet = req.body;
-    
-    // 1. Structure/TTL validation
-    const validationResult = validatePacket(packet);
-    if (!validationResult.isValid) {
-      return res.status(400).json({ success: false, message: validationResult.reason });
-    }
-
-    // 2. Load device
+    if (!validatePacket(packet).isValid) return deny(res, 400, 'INVALID_PACKET');
     const device = await MeshDevice.findOne({ deviceId: packet.org, status: 'active' });
-    if (!device) {
-      return res.status(401).json({ success: false, code: 'UNKNOWN_DEVICE', message: 'Device not enrolled or inactive' });
+    if (!device || !verifyPacketSignature(packet, device.signingPublicKey)) return deny(res, 401, 'ACCESS_DENIED');
+    const expected = destinationToken(device.deviceId);
+    if (expected.length !== packet.dst.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(packet.dst))) {
+      return deny(res, 401, 'ACCESS_DENIED');
     }
-
-    // 3. Signature verification
-    const sigValid = verifyPacketSignature(packet, device.signingPublicKey);
-    if (!sigValid) {
-      return res.status(401).json({ success: false, code: 'INVALID_SIGNATURE', message: 'Packet signature invalid' });
-    }
-
-    // 4. Destination token check
-    const dstBuf = Buffer.from(packet.dst);
-    const expectedBuf = Buffer.from(destinationToken(device.deviceId));
-    if (dstBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(dstBuf, expectedBuf)) {
-      return res.status(400).json({ success: false, code: 'BAD_DESTINATION', message: 'Invalid destination token' });
-    }
-
-    // 5. Rate limiting (60 requests/device/hour)
-    const oneHourAgo = new Date(Date.now() - 3600 * 1000);
-    const requestCount = await OfflineMeshRequest.countDocuments({
-      originDeviceId: packet.org,
-      receivedAt: { $gt: oneHourAgo },
-    });
-    if (requestCount >= parseInt(process.env.OFFLINE_MESH_RATE_LIMIT_PER_HOUR || '60')) {
-      return res.status(429).json({ success: false, message: 'Rate limit exceeded' });
-    }
-
-    // 6. Create request metadata (Replay guard)
-    let meshRequest;
+    const sealedDenial = () => {
+      const response = responsePacket(packet, device, { ok: false, code: 'ACCESS_DENIED' }, packet.exp, packet.op);
+      return response ? res.json({ success: true, response }) : deny(res, 410, 'REQUEST_EXPIRED');
+    };
+    let payload, user;
     try {
-      meshRequest = await OfflineMeshRequest.create({
-        requestId: packet.rid,
-        originDeviceId: packet.org,
-        createdAt: packet.iat,
-        expiresAt: packet.exp,
-        ttlOnArrival: packet.ttl,
-        gatewayDeviceId: req.body.gatewayDeviceId || '',
-        gatewayIp: req.ip || '',
-        status: 'PROCESSING',
-      });
-    } catch (err) {
-      if (err.code === 11000) {
-        // Replay detected, check if response exists
-        const existing = await OfflineMeshRequest.findOne({ requestId: packet.rid });
-        if (existing && existing.sealedResponse) {
-          return res.json({ success: true, response: JSON.parse(existing.sealedResponse) });
-        }
-        return res.status(409).json({ success: false, code: 'DUPLICATE_REQUEST', message: 'Duplicate request ID' });
+      payload = JSON.parse(openSealed(packet.epk, packet.pay, getAadBytes(packet), 'swasthyatap/mesh/v2/req'));
+      if (!validateReadPayload(payload, packet)) return sealedDenial();
+      user = verifyMeshSession(payload.token);
+      if (!ownsDevice(user, device)) return sealedDenial();
+      await validateCurrentPrincipal(user); // checked at processing time, including retries
+    } catch (_) { return sealedDenial(); }
+
+    const digest = crypto.createHash('sha256').update(getCanonicalString(packet)).digest('hex');
+    const replay = async () => {
+      const existing = await OfflineMeshRequest.findOne({ requestId: packet.rid });
+      if (!existing || existing.originDeviceId !== packet.org || existing.requestDigest !== digest) {
+        return deny(res, 409, 'DUPLICATE_REQUEST');
       }
+      if (existing.expiresAt <= nowSeconds()) return deny(res, 410, 'REQUEST_EXPIRED');
+      if (existing.sealedResponse) {
+        if (!enabled()) return deny(res, 503, 'MESH_DISABLED');
+        const activeDevice = await MeshDevice.findOne({ deviceId: packet.org, status: 'active' });
+        if (!activeDevice) return sealedDenial();
+        const response = JSON.parse(existing.sealedResponse);
+        if (response.exp <= nowSeconds()) return deny(res, 410, 'REQUEST_EXPIRED');
+        return res.json({ success: true, response });
+      }
+      return deny(res, 409, 'REQUEST_PENDING');
+    };
+    if (await OfflineMeshRequest.findOne({ requestId: packet.rid })) return replay();
+    const count = await OfflineMeshRequest.countDocuments({ originDeviceId: packet.org,
+      receivedAt: { $gt: new Date(Date.now() - 15 * 60 * 1000) } });
+    if (count >= 60) return deny(res, 429, 'RATE_LIMITED');
+
+    let record;
+    try {
+      record = await OfflineMeshRequest.create({ requestId: packet.rid, originDeviceId: packet.org,
+        requestType: packet.op, requestDigest: digest, createdAt: packet.iat,
+        expiresAt: packet.exp, ttlOnArrival: packet.ttl, status: 'PROCESSING', authorizedAt: new Date(),
+        // Keyed target correlation prevents guessing identifiers from a DB dump.
+        targetRefHash: crypto.createHmac('sha256', Buffer.from(process.env.MESH_SERVER_SECRET, 'base64'))
+          .update(payload.ref).digest('hex') });
+    } catch (err) {
+      if (err.code === 11000) return replay();
       throw err;
     }
 
-    // 7. Open Sealed Payload
-    let decryptedPayload;
+    let resultData = null;
+    let isFound = false;
+
+    if (packet.op === READ_HOSPITAL) {
+      const hospital = await hospitals.readHospital(payload.ref);
+      record.snapshotAt = new Date();
+      isFound = !!hospital;
+      audit(packet.rid, packet.op, isFound ? 'READ_COMPLETED' : 'READ_NOT_FOUND');
+      resultData = { hospital: hospital || undefined };
+    } else if (packet.op === READ_PATIENT) {
+      // Role-Based Access Control: Only an authorized doctor may query patient records over mesh
+      if (user.role !== 'hospital' || user.hospitalRole !== 'doctor') {
+        record.status = 'REJECTED';
+        await record.save();
+        audit(packet.rid, packet.op, 'ACCESS_DENIED_NOT_DOCTOR');
+        return sealedDenial();
+      }
+
+      const patient = await citizens.readPatientForDoctor(payload.ref);
+      record.snapshotAt = new Date();
+      isFound = !!patient;
+      audit(packet.rid, packet.op, isFound ? 'READ_COMPLETED' : 'READ_NOT_FOUND');
+      resultData = { patient: patient || undefined };
+    }
+
+    // Recheck access after the read, before releasing ciphertext.
     try {
-      const aad = getAadBytes(packet);
-      decryptedPayload = openSealed(packet.epk, packet.pay, aad, 'swasthyatap/mesh/v1/req');
-    } catch (err) {
-      meshRequest.status = 'REJECTED';
-      meshRequest.rejectReason = 'DECRYPTION_FAILED';
-      await meshRequest.save();
-      return res.status(400).json({ success: false, code: 'DECRYPTION_FAILED', message: 'Payload decryption failed' });
+      verifyMeshSession(payload.token);
+      await validateCurrentPrincipal(user);
+      if (!await MeshDevice.findOne({ deviceId: packet.org, status: 'active' })) throw new Error();
+    } catch (_) {
+      record.status = 'REJECTED';
+      await record.save();
+      return sealedDenial();
     }
-
-    const payloadObj = JSON.parse(decryptedPayload);
-    const ref = payloadObj.ref;
-    
-    // Save sha256 hash of patient identifier for tracking
-    meshRequest.targetRefHash = crypto.createHash('sha256').update(ref).digest('hex');
-
-    // 8. Authorization
-    if (device.ownerType === 'citizen') {
-      // Citizen can only request their own profile
-      if (device.citizenId !== ref) {
-        meshRequest.status = 'REJECTED';
-        meshRequest.rejectReason = 'UNAUTHORIZED';
-        await meshRequest.save();
-        return res.status(403).json({ success: false, message: 'Unauthorized' });
-      }
+    if (!enabled()) return deny(res, 503, 'MESH_DISABLED');
+    const response = responsePacket(packet, device, {
+      ok: isFound,
+      ...resultData,
+      code: isFound ? undefined : 'NOT_FOUND',
+      receivedAt: record.receivedAt, authorizedAt: record.authorizedAt,
+      snapshotAt: record.snapshotAt,
+    }, Math.min(packet.exp, user.exp), packet.op);
+    if (!response) {
+      record.status = 'EXPIRED';
+      await record.save();
+      return deny(res, 410, 'RESPONSE_UNAVAILABLE');
     }
-
-    // 9. Fetch Profile
-    let citizenData = null;
-    let found = false;
-
-    if (process.env.OFFLINE_MESH_MOCK_PAYLOAD === 'true') {
-      citizenData = {
-        id: ref,
-        fullName: 'MOCK PATIENT',
-        bloodGroup: 'O+',
-        chronicConditions: 'TEST_ONLY',
-        allergies: 'None',
-        prescriptions: [{ medicineName: 'MOCK_DATA', dosage: '1-0-1' }],
-      };
-      found = true;
-    } else {
-      let citizen = await Citizen.findOne({ profileId: ref });
-      if (!citizen && ref && ref.length === 64) {
-        const card = await NfcCard.findOne({ rawToken: ref });
-        if (card) {
-          citizen = await Citizen.findById(card.patientId);
-        }
-        if (!citizen) {
-          const citizens = await Citizen.find({});
-          citizen = citizens.find(
-            c => crypto.createHash('sha256').update(c.profileId).digest('hex') === ref
-          );
-        }
-      }
-
-      if (citizen) {
-        citizenData = citizensRouter.formatCitizen(citizen);
-        found = true;
-      }
-    }
-
-    // 10. Build Response Object
-    const responsePayload = {
-      rid: packet.rid,
-      ok: found,
-      citizen: citizenData,
-      error: found ? undefined : 'Patient profile not found',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 120,
-    };
-
-    const responseDummyHeader = {
-      v: 1,
-      t: 'MEDICAL_DATA_RESPONSE',
-      rid: packet.rid,
-      org: packet.org,
-      dst: packet.dst,
-      iat: responsePayload.iat,
-      exp: responsePayload.exp,
-      epk: '',
-    };
-
-    const responseAad = getAadBytes(responseDummyHeader);
-    const responseSealed = sealForDevice(
-      responsePayload,
-      device.agreementPublicKey,
-      responseAad,
-      'swasthyatap/mesh/v1/resp'
-    );
-
-    const responsePacket = {
-      v: 1,
-      t: 'MEDICAL_DATA_RESPONSE',
-      rid: packet.rid,
-      org: packet.org,
-      dst: packet.dst,
-      iat: responsePayload.iat,
-      exp: responsePayload.exp,
-      ttl: packet.ttl,
-      epk: responseSealed.epk,
-      pay: responseSealed.pay,
-      sig: '',
-    };
-
-    // Sign the response packet canonical bytes
-    const responseSig = signResponse(getCanonicalString(responsePacket));
-    responsePacket.sig = responseSig;
-
-    // 11. Save response and complete request metadata
-    meshRequest.status = 'RESPONSE_READY';
-    meshRequest.sealedResponse = JSON.stringify(responsePacket);
-    meshRequest.completedAt = new Date();
-    await meshRequest.save();
-
-    res.json({ success: true, response: responsePacket });
-  } catch (err) {
-    console.error('[mesh] request processing error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+    record.status = 'RESPONSE_READY';
+    record.sealedResponse = JSON.stringify(response);
+    record.completedAt = new Date();
+    await record.save();
+    return res.json({ success: true, response });
+  } catch (_) { return deny(res, 500, 'MESH_UNAVAILABLE'); }
 });
 
-/**
- * GET /api/offline-mesh/response/:requestId
- * Polling fallback for gateways.
- */
-router.get('/response/:requestId', async (req, res) => {
-  try {
-    const meshRequest = await OfflineMeshRequest.findOne({ requestId: req.params.requestId });
-    if (!meshRequest) {
-      return res.status(404).json({ success: false, message: 'Request not found' });
-    }
+// Legacy unauthenticated polling/ack/status exposed activity and allowed response
+// deletion. Retry the original signed, sealed request instead (reauthorizes it).
+router.all(['/response/:requestId', '/response-ack', '/status/:requestId'], (req, res) => deny(res, 410, 'UNSUPPORTED_OPERATION'));
+module.exports = router;
 
-    if (meshRequest.status === 'RESPONSE_READY' && meshRequest.sealedResponse) {
-      return res.json({ success: true, response: JSON.parse(meshRequest.sealedResponse) });
-    }
-
-    res.status(202).json({ success: false, status: meshRequest.status, message: 'Response is not ready yet' });
-  } catch (err) {
-    console.error('[mesh] response-get error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-/**
- * POST /api/offline-mesh/response-ack
- * Origin device confirms delivery. Deletes the cached response.
- */
-router.post('/response-ack', async (req, res) => {
-  try {
-    const { requestId } = req.body;
-    const meshRequest = await OfflineMeshRequest.findOne({ requestId });
-    if (!meshRequest) {
-      return res.status(404).json({ success: false, message: 'Request not found' });
-    }
-
-    meshRequest.status = 'DELIVERED';
-    meshRequest.sealedResponse = undefined; // clear ciphertext immediately
-    await meshRequest.save();
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[mesh] response-ack error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-/**
- * GET /api/offline-mesh/status/:requestId
- * Returns request metadata only.
- */
-router.get('/status/:requestId', async (req, res) => {
-  try {
-    const meshRequest = await OfflineMeshRequest.findOne({ requestId: req.params.requestId });
-    if (!meshRequest) {
-      return res.status(404).json({ success: false, message: 'Request not found' });
-    }
-    res.json({
-      status: meshRequest.status,
-      receivedAt: meshRequest.receivedAt,
-      completedAt: meshRequest.completedAt,
-    });
-  } catch (err) {
-    console.error('[mesh] status error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
+// Legacy unauthenticated polling/ack/status exposed activity and allowed response
+// deletion. Retry the original signed, sealed request instead (reauthorizes it).
+router.all(['/response/:requestId', '/response-ack', '/status/:requestId'], (req, res) => deny(res, 410, 'UNSUPPORTED_OPERATION'));
 module.exports = router;

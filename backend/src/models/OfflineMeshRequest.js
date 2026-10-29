@@ -9,6 +9,9 @@ const OfflineMeshRequestSchema = new mongoose.Schema(
       index: true,
     },
     originDeviceId: { type: String, index: true },
+    requestDigest: String, // binds retries to the exact signed request
+    authorizedAt: Date,
+    snapshotAt: Date,
     requestType: { type: String, default: 'MEDICAL_DATA_FETCH' },
     createdAt: Number, // packet iat (unix sec)
     expiresAt: Number, // packet exp (unix sec)

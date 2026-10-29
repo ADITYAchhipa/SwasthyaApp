@@ -32,15 +32,18 @@ test('Offline Mesh Cryptography & Validation', async (t) => {
 
   await t.test('validatePacket structural checks', () => {
     const validPacket = {
-      v: 1,
+      v: 2,
       t: 'MEDICAL_DATA_REQUEST',
-      rid: 'uuid-1234-5678',
-      org: 'device_id_hash',
-      dst: 'dest_token',
+      op: 'READ_HOSPITAL',
+      rid: crypto.randomUUID(),
+      org: 'a'.repeat(32),
+      dst: 'a'.repeat(43),
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 60,
       ttl: 5,
-      sig: 'sig_bytes',
+      sig: 'a'.repeat(86),
+      epk: 'a'.repeat(43),
+      pay: 'a'.repeat(60),
     };
 
     const res = validatePacket(validPacket);
@@ -49,7 +52,7 @@ test('Offline Mesh Cryptography & Validation', async (t) => {
     const expired = { ...validPacket, exp: Math.floor(Date.now() / 1000) - 10 };
     assert.strictEqual(validatePacket(expired).isValid, false);
 
-    const versionMismatch = { ...validPacket, v: 2 };
+    const versionMismatch = { ...validPacket, v: 1 };
     assert.strictEqual(validatePacket(versionMismatch).isValid, false);
 
     const badSkew = { ...validPacket, iat: Math.floor(Date.now() / 1000) - 400 };

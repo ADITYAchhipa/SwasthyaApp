@@ -17,11 +17,11 @@ class OfflineRelayProgress extends StatelessWidget {
       case MeshUiState.sent:
         return "Request sent through a nearby device";
       case MeshUiState.awaiting:
-        return "Retrieving medical information…";
+        return "Retrieving hospital directory data…";
       case MeshUiState.received:
-        return "Medical information received securely";
+        return "Hospital directory snapshot received";
       case MeshUiState.failed:
-        return "Unable to retrieve information offline. Please connect to the internet.";
+        return "Unable to retrieve hospital data offline. Patient records require an active internet connection.";
     }
   }
 
@@ -49,7 +49,7 @@ class OfflineRelayProgress extends StatelessWidget {
             ),
           ),
           Text(
-            state == MeshUiState.failed ? "Mesh Operation Failed" : "Offline Mesh Retrieval",
+            state == MeshUiState.failed ? "Mesh Operation Failed" : "Hospital Directory Mesh Retrieval",
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

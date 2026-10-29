@@ -16,6 +16,9 @@ class NearbyTransport extends MeshTransport {
   bool _isDiscovering = false;
   bool _isAdvertising = false;
 
+  bool get isDiscovering => _isDiscovering;
+  bool get isAdvertising => _isAdvertising;
+
   @override
   String get id => 'nearby';
 
